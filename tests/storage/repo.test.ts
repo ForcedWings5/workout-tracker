@@ -1,0 +1,147 @@
+import { createDb, type WorkoutDB } from "../../src/storage/db";
+import { seedIfEmpty, seedExerciseId } from "../../src/storage/seed";
+import {
+  addSet,
+  discardWorkout,
+  finishWorkout,
+  loadTodayState,
+  setNote,
+  skipOrRemoveSet,
+  startWorkout,
+  updateSet,
+} from "../../src/storage/repo";
+
+let db: WorkoutDB;
+
+beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-18T15:00:00Z"));
+  db = createDb(crypto.randomUUID());
+  await seedIfEmpty(db);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  db.close();
+});
+
+const UPPER_A = "seed-workout-upper-a";
+const LOWER_A = "seed-workout-lower-a";
+
+async function sessionRow(id: string) {
+  const s = await db.sessions.get(id);
+  if (!s) throw new Error("missing session");
+  return s;
+}
+
+test("with no history, next up is Upper A and nothing is in progress", async () => {
+  const state = await loadTodayState(db);
+  expect(state.nextUpId).toBe(UPPER_A);
+  expect(state.inProgress).toBeUndefined();
+  expect(state.workouts.map((w) => w.id)).toEqual([UPPER_A, LOWER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
+  expect(state.lastDateByWorkout).toEqual({});
+});
+
+test("startWorkout creates an in-progress session dated today", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  const state = await loadTodayState(db);
+  expect(state.inProgress?.id).toBe(id);
+  expect(state.inProgress).toMatchObject({ workoutId: UPPER_A, date: "2026-11-18", status: "in_progress", dirty: 1 });
+  expect(state.inProgress?.entries[0].exerciseId).toBe(seedExerciseId("Barbell Bench Press"));
+});
+
+test("a second startWorkout throws", async () => {
+  await startWorkout(db, UPPER_A);
+  await expect(startWorkout(db, LOWER_A)).rejects.toThrow("A workout is already in progress");
+});
+
+test("updateSet writes immediately and doesn't mark the set done", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await db.sessions.update(id, { dirty: 0 });
+  await updateSet(db, id, 0, 0, { weight: 70 });
+  const s = await sessionRow(id);
+  expect(s.entries[0].sets[0]).toEqual({ weight: 70, done: false });
+  expect(s.dirty).toBe(1);
+});
+
+test("updateSet can mark done and clear a weight", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 70, amount: 10 });
+  await updateSet(db, id, 0, 0, { done: true, weight: undefined });
+  expect((await sessionRow(id)).entries[0].sets[0]).toEqual({ amount: 10, done: true });
+});
+
+test("addSet adds a set to the entry", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await addSet(db, id, 0);
+  expect((await sessionRow(id)).entries[0].sets).toHaveLength(5);
+});
+
+test("addSet pre-fills from last time's final set", async () => {
+  const first = await startWorkout(db, UPPER_A);
+  await updateSet(db, first, 0, 0, { weight: 65, amount: 10, done: true });
+  await updateSet(db, first, 0, 1, { weight: 75, amount: 8, done: true });
+  await finishWorkout(db, first);
+  const second = await startWorkout(db, UPPER_A);
+  await addSet(db, second, 0);
+  expect((await sessionRow(second)).entries[0].sets[4]).toEqual({ weight: 75, amount: 8, done: false });
+});
+
+test("skipOrRemoveSet toggles skipped on a pre-filled set and deletes a blank one", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10 });
+  await skipOrRemoveSet(db, id, 0, 0);
+  expect((await sessionRow(id)).entries[0].sets[0]).toMatchObject({ skipped: true, done: false });
+  await skipOrRemoveSet(db, id, 0, 0);
+  expect((await sessionRow(id)).entries[0].sets[0].skipped).toBe(false);
+  await skipOrRemoveSet(db, id, 0, 3);
+  expect((await sessionRow(id)).entries[0].sets).toHaveLength(3);
+});
+
+test("setNote stores the note and a blank note clears it", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await setNote(db, id, 0, "form shaky");
+  expect((await sessionRow(id)).entries[0].note).toBe("form shaky");
+  await setNote(db, id, 0, "  ");
+  expect((await sessionRow(id)).entries[0].note).toBeUndefined();
+});
+
+test("finishWorkout with zero done sets returns empty and writes nothing", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  const before = await sessionRow(id);
+  expect(await finishWorkout(db, id)).toBe("empty");
+  expect(await sessionRow(id)).toEqual(before);
+});
+
+test("after finishing Upper A, next up is Lower A", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
+  expect(await finishWorkout(db, id)).toBe("finished");
+  const state = await loadTodayState(db);
+  expect(state.nextUpId).toBe(LOWER_A);
+  expect(state.inProgress).toBeUndefined();
+  expect(state.lastDateByWorkout[UPPER_A]).toBe("2026-11-18");
+  const saved = await sessionRow(id);
+  expect(saved.status).toBe("finished");
+  expect(saved.entries).toHaveLength(1);
+});
+
+test("Review Focus 3: a session left open for days keeps its date and still advances next up", async () => {
+  vi.setSystemTime(new Date("2026-11-10T15:00:00Z"));
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
+  vi.setSystemTime(new Date("2026-11-14T15:00:00Z"));
+  const state = await loadTodayState(db);
+  expect(state.inProgress?.id).toBe(id);
+  await finishWorkout(db, id);
+  expect((await sessionRow(id)).date).toBe("2026-11-10");
+  expect((await loadTodayState(db)).nextUpId).toBe(LOWER_A);
+});
+
+test("discardWorkout tombstones the session", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await discardWorkout(db, id);
+  expect((await loadTodayState(db)).inProgress).toBeUndefined();
+  expect(await sessionRow(id)).toMatchObject({ deleted: true, dirty: 1 });
+  await expect(startWorkout(db, UPPER_A)).resolves.toBeTypeOf("string");
+});
