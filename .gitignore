@@ -20,3 +20,6 @@ npm-debug.log*
 
 # Impeccable's design-check cache (holds local file paths)
 .impeccable/hook.cache.json
+
+# TypeScript build cache
+*.tsbuildinfo
