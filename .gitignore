@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output (vite build, and vite-plugin-pwa's dev service worker)
+dist/
+dev-dist/
+
+# Test coverage
+coverage/
+
+# Local Supabase keys. Deploys read them from GitHub Actions variables.
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# Impeccable's design-check cache (holds local file paths)
+.impeccable/hook.cache.json
