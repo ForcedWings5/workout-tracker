@@ -175,3 +175,27 @@ test("the header shows the set count", async () => {
   renderLog(id);
   expect(await screen.findByText("Horizontal Push & Pull · 1 of 15 sets")).toBeInTheDocument();
 });
+
+test("a typed note is saved before blur", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  renderLog(id);
+  await userEvent.type(await screen.findByLabelText("Note for Barbell Bench Press"), "elbow sore");
+  await waitFor(async () => expect((await db.sessions.get(id))?.entries[0].note).toBe("elbow sore"));
+});
+
+test("typed reps are saved before blur", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  renderLog(id);
+  await userEvent.type((await screen.findAllByLabelText("Set 1 reps"))[0], "9");
+  await waitFor(async () => expect((await sets(id))[0].amount).toBe(9));
+});
+
+test("a done set has no skip control", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
+  renderLog(id);
+  const bench = await screen.findByRole("region", { name: "Barbell Bench Press" });
+  await within(bench).findByRole("button", { name: "Set 1: 65 lb, 10 reps, done" });
+  expect(within(bench).queryByRole("button", { name: "Skip set 1" })).not.toBeInTheDocument();
+  expect(within(bench).getByRole("button", { name: "Skip set 2" })).toBeInTheDocument();
+});

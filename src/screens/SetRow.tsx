@@ -35,9 +35,14 @@ export function SetRow({ index, set, measure, planned, current, onPatch, onToggl
   return (
     <div className={`set set--${state}`} data-current={current || undefined}>
       <div className="set__row">
-        <button type="button" className="set__n" aria-label={skipLabel} onClick={onSkip}>
-          {n}
-        </button>
+        {set.done ? (
+          // A done set can't be skipped by a stray tap; un-confirm it first.
+          <span className="set__n">{n}</span>
+        ) : (
+          <button type="button" className="set__n" aria-label={skipLabel} onClick={onSkip}>
+            {n}
+          </button>
+        )}
         <NumberField
           label={`Set ${n} weight`}
           value={set.weight}

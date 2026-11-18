@@ -84,11 +84,12 @@ function NoteField({ name, value, onCommit }: { name: string; value: string; onC
       placeholder="Add a note…"
       value={text}
       onFocus={() => (focused.current = true)}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={() => {
-        focused.current = false;
-        if (text !== value) onCommit(text);
+      onChange={(e) => {
+        // Saved on every keystroke, so a note survives the phone locking.
+        setText(e.target.value);
+        onCommit(e.target.value);
       }}
+      onBlur={() => (focused.current = false)}
     />
   );
 }

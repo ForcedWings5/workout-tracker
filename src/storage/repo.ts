@@ -57,11 +57,16 @@ export async function startWorkout(db: WorkoutDB, workoutId: string): Promise<st
   });
 }
 
-/** Reads a session, lets `change` edit a copy, and saves it. Returns false to skip the write. */
+/**
+ * Reads an in-progress session, lets `change` edit a copy, and saves it, all in one
+ * transaction. Returns false to skip the write. A finished session is refused, so a
+ * late tap can't rewrite history (editing past sessions gets its own path).
+ */
 async function mutateSession(db: WorkoutDB, sessionId: string, change: (s: Session) => boolean | void): Promise<void> {
   await db.transaction("rw", db.sessions, async () => {
     const current = await db.sessions.get(sessionId);
     if (!current || current.deleted) throw new Error("Session not found");
+    if (current.status !== "in_progress") throw new Error("This workout is already finished");
     const copy = structuredClone(current);
     if (change(copy) === false) return;
     await save(db.sessions, copy);
@@ -89,6 +94,19 @@ export async function updateSet(
   });
 }
 
+/** Confirms or un-confirms a set from its stored state; a skipped set is restored and confirmed. Returns the new done value. */
+export async function toggleSetDone(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number): Promise<boolean> {
+  let done = false;
+  await mutateSession(db, sessionId, (s) => {
+    const entry = entryAt(s, entryIndex);
+    const set = entry.sets[setIndex];
+    if (!set) throw new Error("Set not found");
+    done = set.skipped ? true : !set.done;
+    entry.sets[setIndex] = { ...set, done, skipped: false };
+  });
+  return done;
+}
+
 /** Adds a set, pre-filled the same way the session's sets were. */
 export async function addSet(db: WorkoutDB, sessionId: string, entryIndex: number): Promise<void> {
   const history = live(await db.sessions.toArray());
@@ -105,6 +123,7 @@ export async function skipOrRemoveSet(db: WorkoutDB, sessionId: string, entryInd
     const entry = entryAt(s, entryIndex);
     const set = entry.sets[setIndex];
     if (!set) throw new Error("Set not found");
+    if (set.done) return false; // un-confirm first
     if (isRemovableSet(set, setIndex, entry.planned.sets)) {
       entry.sets.splice(setIndex, 1);
     } else {

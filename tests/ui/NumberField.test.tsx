@@ -27,14 +27,29 @@ test('typing "42,5" then blur commits 42.5', async () => {
   expect(onCommit).toHaveBeenCalledWith(42.5);
 });
 
-test('typing "abc" then blur commits undefined and does not throw', async () => {
+test("clearing the field commits undefined (bodyweight)", async () => {
   const onCommit = vi.fn();
   render(<NumberField label="w" value={65} unit="lb" kind="weight" draft={false} onCommit={onCommit} />);
-  const input = screen.getByLabelText("w");
-  await userEvent.clear(input);
-  await userEvent.type(input, "abc");
-  await userEvent.tab();
+  await userEvent.clear(screen.getByLabelText("w"));
   expect(onCommit).toHaveBeenCalledWith(undefined);
+});
+
+test("a stray non-number never clears the value: blur restores it", async () => {
+  const onCommit = vi.fn();
+  render(<NumberField label="w" value={85} unit="lb" kind="weight" draft={false} onCommit={onCommit} />);
+  const input = screen.getByLabelText("w");
+  await userEvent.type(input, ".", { initialSelectionStart: 0, initialSelectionEnd: 2 });
+  expect(input).toHaveValue(".");
+  await userEvent.tab();
+  expect(onCommit).not.toHaveBeenCalled();
+  expect(input).toHaveValue("85");
+});
+
+test("saves while typing, without waiting for blur", async () => {
+  const onCommit = vi.fn();
+  render(<NumberField label="w" value={65} unit="lb" kind="weight" draft={false} onCommit={onCommit} />);
+  await userEvent.type(screen.getByLabelText("w"), "70", { initialSelectionStart: 0, initialSelectionEnd: 2 });
+  expect(onCommit).toHaveBeenLastCalledWith(70);
 });
 
 test("blur without a change does not commit", async () => {

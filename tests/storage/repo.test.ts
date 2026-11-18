@@ -9,6 +9,7 @@ import {
   setNote,
   skipOrRemoveSet,
   startWorkout,
+  toggleSetDone,
   updateSet,
 } from "../../src/storage/repo";
 
@@ -178,4 +179,40 @@ test("skipOrRemoveSet removes a blank set added beyond the plan", async () => {
   await addSet(db, id, 0);
   await skipOrRemoveSet(db, id, 0, 4);
   expect((await sessionRow(id)).entries[0].sets).toHaveLength(4);
+});
+
+test("skipOrRemoveSet leaves a done set alone", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
+  await skipOrRemoveSet(db, id, 0, 0);
+  expect((await sessionRow(id)).entries[0].sets[0]).toMatchObject({ done: true });
+  expect((await sessionRow(id)).entries[0].sets[0].skipped).toBeFalsy();
+});
+
+test("toggleSetDone flips the stored value, so two quick taps cancel out", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await Promise.all([toggleSetDone(db, id, 0, 0), toggleSetDone(db, id, 0, 0)]);
+  expect((await sessionRow(id)).entries[0].sets[0].done).toBe(false);
+  expect(await toggleSetDone(db, id, 0, 0)).toBe(true);
+});
+
+test("toggleSetDone on a skipped set restores and confirms it", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10 });
+  await skipOrRemoveSet(db, id, 0, 0);
+  await toggleSetDone(db, id, 0, 0);
+  expect((await sessionRow(id)).entries[0].sets[0]).toMatchObject({ done: true, skipped: false });
+});
+
+test("a finished session refuses set and note edits, so history isn't rewritten", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
+  await finishWorkout(db, id);
+  const before = await sessionRow(id);
+  await expect(updateSet(db, id, 0, 0, { weight: 999 })).rejects.toThrow("This workout is already finished");
+  await expect(toggleSetDone(db, id, 0, 0)).rejects.toThrow("This workout is already finished");
+  await expect(addSet(db, id, 0)).rejects.toThrow("This workout is already finished");
+  await expect(setNote(db, id, 0, "late")).rejects.toThrow("This workout is already finished");
+  await expect(skipOrRemoveSet(db, id, 0, 0)).rejects.toThrow("This workout is already finished");
+  expect(await sessionRow(id)).toEqual(before);
 });

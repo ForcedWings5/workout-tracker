@@ -4,9 +4,9 @@ import { shortDate } from "../logic/clock";
 import { formatElapsed } from "../logic/format";
 import { splitWorkoutName } from "../logic/input";
 import { sessionProgress } from "../logic/session";
-import type { LoggedSet, Session } from "../logic/types";
+import type { Session } from "../logic/types";
 import { useDb } from "../storage/DbContext";
-import { addSet, discardWorkout, finishWorkout, loadLogState, setNote, skipOrRemoveSet, updateSet } from "../storage/repo";
+import { addSet, discardWorkout, finishWorkout, loadLogState, setNote, skipOrRemoveSet, toggleSetDone, updateSet } from "../storage/repo";
 import { Button } from "../ui/Button";
 import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
@@ -48,6 +48,11 @@ function useElapsed(sessionId: string, running: boolean): number {
   return Math.max(0, (now - startedAt) / 1000);
 }
 
+/** Fires a write without awaiting it. A refused or failed write is logged, never left unhandled. */
+function run(write: Promise<unknown>) {
+  write.catch((err: unknown) => console.error("Couldn't save", err));
+}
+
 function forgetTimer(sessionId: string) {
   try {
     localStorage.removeItem(`workout-timer:${sessionId}`);
@@ -87,12 +92,13 @@ export function LogWorkout({ sessionId, onClose }: Props) {
 
   if (fulfilled) return <Fulfilled session={session} names={state.exercises} onDone={onClose} />;
 
-  const toggle = (entryIndex: number, setIndex: number) => {
-    const set = session.entries[entryIndex].sets[setIndex];
-    const patch: Partial<LoggedSet> = set.skipped ? { skipped: false, done: true } : { done: !set.done };
-    if (patch.done) scrollNext.current = true;
-    void updateSet(db, sessionId, entryIndex, setIndex, patch);
-  };
+  // The toggle is computed from the stored set inside the write, so two quick taps cancel out.
+  const toggle = (entryIndex: number, setIndex: number) =>
+    run(
+      toggleSetDone(db, sessionId, entryIndex, setIndex).then((done) => {
+        if (done) scrollNext.current = true;
+      }),
+    );
 
   const fulfill = async () => {
     setFinishing(true);
@@ -133,11 +139,11 @@ export function LogWorkout({ sessionId, onClose }: Props) {
             entry={entry}
             lastNote={state.lastNotes[entry.exerciseId]}
             currentSet={current?.entry === i ? current.set : undefined}
-            onPatchSet={(s, patch) => void updateSet(db, sessionId, i, s, patch)}
+            onPatchSet={(s, patch) => run(updateSet(db, sessionId, i, s, patch))}
             onToggleSet={(s) => toggle(i, s)}
-            onSkipSet={(s) => void skipOrRemoveSet(db, sessionId, i, s)}
-            onAddSet={() => void addSet(db, sessionId, i)}
-            onNote={(note) => void setNote(db, sessionId, i, note)}
+            onSkipSet={(s) => run(skipOrRemoveSet(db, sessionId, i, s))}
+            onAddSet={() => run(addSet(db, sessionId, i))}
+            onNote={(note) => run(setNote(db, sessionId, i, note))}
           />
         );
       })}

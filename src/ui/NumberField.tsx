@@ -17,7 +17,7 @@ type Props = {
 
 const format = (v: number | undefined) => (v === undefined ? "" : String(v));
 
-/** A number edited in place. Commits on blur or Enter; a bad value commits undefined, never NaN. */
+/** A number edited in place. Saves as you type; never saves NaN. */
 export function NumberField({ label, value, unit, kind, draft, struck = false, placeholder, onCommit }: Props) {
   const [text, setText] = useState(format(value));
   const focused = useRef(false);
@@ -26,12 +26,24 @@ export function NumberField({ label, value, unit, kind, draft, struck = false, p
     if (!focused.current) setText(format(value));
   }, [value]);
 
+  // Saves on every keystroke, so a value survives the phone locking mid-entry.
+  // Only an empty field means "no value"; other invalid text is never saved.
+  const change = (raw: string) => {
+    setText(raw);
+    if (raw.trim() === "") {
+      if (value !== undefined) onCommit(undefined);
+      return;
+    }
+    const parsed = parseNumberInput(raw);
+    if (parsed !== undefined && parsed !== value) onCommit(parsed);
+  };
+
   const commit = () => {
     focused.current = false;
-    if (text === format(value)) return;
+    if (text.trim() === "") return setText("");
     const parsed = parseNumberInput(text);
-    setText(format(parsed));
-    if (parsed !== value) onCommit(parsed);
+    // A stray "." or "8..5" restores the last saved value.
+    setText(format(parsed ?? value));
   };
 
   const classes = ["num", draft ? "num--draft" : "", struck ? "num--struck" : ""].filter(Boolean).join(" ");
@@ -53,7 +65,7 @@ export function NumberField({ label, value, unit, kind, draft, struck = false, p
           focused.current = true;
           e.currentTarget.select();
         }}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => change(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
