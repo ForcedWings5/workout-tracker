@@ -1,4 +1,4 @@
-import { lastNoteFor, prefillSets, startSession } from "../../src/logic/session";
+import { finishSession, lastNoteFor, prefillSets, startSession } from "../../src/logic/session";
 import type { Workout } from "../../src/logic/types";
 import { done, entry, session } from "./fixtures";
 
@@ -120,5 +120,49 @@ describe("lastNoteFor", () => {
 
   test("undefined when there is no note", () => {
     expect(lastNoteFor(LAT, [session({ entries: [entry(LAT, [done(70, 10)])] })])).toBeUndefined();
+  });
+});
+
+describe("finishSession", () => {
+  const live = () =>
+    session({
+      status: "in_progress",
+      entries: [
+        entry("bench", [done(65, 10), { weight: 75, amount: 8, done: false }, { weight: 85, amount: 8, done: true, skipped: true }], {
+          note: "form shaky",
+        }),
+        entry("row", [{ weight: 55, amount: 12, done: false }]),
+        entry("curl", [done(30, 12)]),
+      ],
+    });
+
+  test("marks the session finished", () => {
+    expect(finishSession(live())?.status).toBe("finished");
+  });
+
+  test("drops undone and skipped sets", () => {
+    expect(finishSession(live())?.entries[0].sets).toEqual([done(65, 10)]);
+  });
+
+  test("drops entries with no done sets and keeps the note on kept entries", () => {
+    const out = finishSession(live());
+    expect(out?.entries.map((e) => e.exerciseId)).toEqual(["bench", "curl"]);
+    expect(out?.entries[0].note).toBe("form shaky");
+  });
+
+  test("returns null with zero done sets", () => {
+    expect(finishSession(session({ status: "in_progress", entries: [entry("row", [{ weight: 55, amount: 12, done: false }])] }))).toBeNull();
+    expect(finishSession(session({ status: "in_progress", entries: [] }))).toBeNull();
+  });
+
+  test("does not mutate its input", () => {
+    const input = live();
+    const before = structuredClone(input);
+    finishSession(input);
+    expect(input).toEqual(before);
+  });
+
+  test("keeps the session's original date", () => {
+    expect(finishSession({ ...live(), date: "2026-11-10" })?.date).toBe("2026-11-10");
   });
 });

@@ -74,3 +74,15 @@ export function lastNoteFor(exerciseId: string, history: Session[]): { date: str
   }
   return undefined;
 }
+
+/**
+ * Keeps only done, unskipped sets and drops exercises left with none.
+ * Returns null when nothing was done, so the caller can offer to discard.
+ */
+export function finishSession(session: Session): Session | null {
+  const entries = session.entries
+    .map((e) => ({ ...e, planned: { ...e.planned }, sets: e.sets.filter((s) => s.done && !s.skipped).map((s) => ({ ...s })) }))
+    .filter((e) => e.sets.length > 0);
+  if (entries.length === 0) return null;
+  return { ...session, status: "finished", entries };
+}
