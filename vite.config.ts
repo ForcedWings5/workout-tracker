@@ -9,5 +9,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["tests/setup.ts"],
+    // A US time zone, so local-date tests cover the "evening is already tomorrow in UTC" case.
+    env: { TZ: "America/New_York" },
   },
 });

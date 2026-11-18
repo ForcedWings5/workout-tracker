@@ -1,6 +1,9 @@
-process.env.TZ = "America/New_York";
-
+// Runs with TZ=America/New_York (set in vite.config.ts).
 import { EPOCH, nowIso, todayLocal } from "../../src/logic/clock";
+
+test("tests run behind UTC, so the midnight case is real", () => {
+  expect(new Date("2026-11-19T02:30:00Z").getTimezoneOffset()).toBe(300);
+});
 
 test("todayLocal uses local date, not UTC", () => {
   // 9:30 pm on Nov 18 in New York is already Nov 19 in UTC.
