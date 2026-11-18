@@ -4,6 +4,7 @@ import {
   addSet,
   discardWorkout,
   finishWorkout,
+  loadLogState,
   loadTodayState,
   setNote,
   skipOrRemoveSet,
@@ -144,4 +145,24 @@ test("discardWorkout tombstones the session", async () => {
   expect((await loadTodayState(db)).inProgress).toBeUndefined();
   expect(await sessionRow(id)).toMatchObject({ deleted: true, dirty: 1 });
   await expect(startWorkout(db, UPPER_A)).resolves.toBeTypeOf("string");
+});
+
+test("loadLogState returns the session, exercise names and last notes", async () => {
+  const first = await startWorkout(db, UPPER_A);
+  await updateSet(db, first, 0, 0, { weight: 65, amount: 10, done: true });
+  await setNote(db, first, 0, "form shaky last set");
+  vi.setSystemTime(new Date("2026-11-20T15:00:00Z"));
+  await finishWorkout(db, first);
+  const second = await startWorkout(db, UPPER_A);
+  const state = await loadLogState(db, second);
+  const bench = seedExerciseId("Barbell Bench Press");
+  expect(state.session?.id).toBe(second);
+  expect(state.exercises[bench].name).toBe("Barbell Bench Press");
+  expect(state.lastNotes[bench]).toEqual({ date: "2026-11-18", note: "form shaky last set" });
+});
+
+test("loadLogState for a missing or deleted session has no session", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await discardWorkout(db, id);
+  expect((await loadLogState(db, id)).session).toBeUndefined();
 });

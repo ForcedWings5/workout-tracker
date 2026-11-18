@@ -1,8 +1,8 @@
 // Everything the screens call. Screens never touch Dexie tables directly.
 import { todayLocal } from "../logic/clock";
 import { nextUp } from "../logic/rotation";
-import { finishSession, prefillSetAt, prefillSource, startSession } from "../logic/session";
-import type { LoggedSet, Session, Workout } from "../logic/types";
+import { finishSession, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
+import type { Exercise, LoggedSet, Session, Workout } from "../logic/types";
 import type { WorkoutDB } from "./db";
 import { live, remove, save } from "./write";
 
@@ -137,4 +137,27 @@ export async function finishWorkout(db: WorkoutDB, sessionId: string): Promise<"
 
 export async function discardWorkout(db: WorkoutDB, sessionId: string): Promise<void> {
   await remove(db.sessions, sessionId);
+}
+
+export type LogState = {
+  session?: Session;
+  exercises: Record<string, Exercise>;
+  /** exerciseId → its most recent note from a finished session. */
+  lastNotes: Record<string, { date: string; note: string }>;
+};
+
+export async function loadLogState(db: WorkoutDB, sessionId: string): Promise<LogState> {
+  const [current, exercises, sessions] = await Promise.all([
+    db.sessions.get(sessionId),
+    db.exercises.toArray(),
+    db.sessions.toArray().then(live),
+  ]);
+  const session = current && !current.deleted ? current : undefined;
+  const lastNotes: LogState["lastNotes"] = {};
+  for (const e of session?.entries ?? []) {
+    const note = lastNoteFor(e.exerciseId, sessions.filter((s) => s.id !== sessionId));
+    if (note) lastNotes[e.exerciseId] = note;
+  }
+  // Archived and deleted exercises stay visible here: a session may still reference them.
+  return { session, exercises: Object.fromEntries(exercises.map((x) => [x.id, x])), lastNotes };
 }

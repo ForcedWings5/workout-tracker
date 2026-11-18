@@ -1,4 +1,4 @@
-import { finishSession, lastNoteFor, prefillSets, startSession } from "../../src/logic/session";
+import { finishSession, lastNoteFor, prefillSets, sessionProgress, startSession } from "../../src/logic/session";
 import type { Workout } from "../../src/logic/types";
 import { done, entry, session } from "./fixtures";
 
@@ -164,5 +164,18 @@ describe("finishSession", () => {
 
   test("keeps the session's original date", () => {
     expect(finishSession({ ...live(), date: "2026-11-10" })?.date).toBe("2026-11-10");
+  });
+});
+
+describe("sessionProgress", () => {
+  test("counts done sets out of the sets not skipped", () => {
+    const s = session({
+      status: "in_progress",
+      entries: [
+        entry("bench", [done(65, 10), { done: false }, { weight: 85, amount: 8, done: false, skipped: true }]),
+        entry("row", [done(55, 12), { done: false }]),
+      ],
+    });
+    expect(sessionProgress(s)).toEqual({ done: 2, total: 4 });
   });
 });

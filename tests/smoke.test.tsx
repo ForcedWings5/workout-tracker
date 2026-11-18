@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import App from "../src/App";
 
-test("renders the Today screen", () => {
+test("renders the Today screen", async () => {
   render(<App />);
-  expect(screen.getByText("Today")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Today" })).toBeInTheDocument();
 });

@@ -12,3 +12,9 @@ export function todayLocal(d: Date = new Date()): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** "2026-11-12" → "11/12" (US month/day). */
+export function shortDate(date: string): string {
+  const [, m, d] = date.split("-");
+  return `${Number(m)}/${Number(d)}`;
+}

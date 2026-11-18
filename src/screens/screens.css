@@ -1,0 +1,106 @@
+/* Screen layouts. Tokens and base components live in src/ui/. */
+
+/* ---------- Board-level text ---------- */
+
+.board-heading {
+  margin: var(--space-8) var(--space-4) var(--space-3);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--on-board-2);
+}
+
+.board-actions {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) var(--space-3) 0;
+}
+
+.empty-text {
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--ink-2);
+}
+
+/* ---------- Today contracts ---------- */
+
+.contract__meta {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.contract__title {
+  margin-top: var(--space-2);
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 38px;
+  overflow-wrap: anywhere;
+}
+
+.contract__subtitle {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
+.contract__action {
+  margin-top: var(--space-5);
+}
+
+.notice--tap {
+  padding: 0;
+}
+
+.contract-tap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-5) var(--space-4) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-notice);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  transition: filter 150ms ease-out;
+}
+
+.contract-tap:active {
+  filter: brightness(0.92);
+}
+
+.contract-tap:disabled {
+  opacity: 0.4;
+}
+
+.contract-tap__title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 30px;
+}
+
+.contract-tap .contract__meta {
+  margin-top: var(--space-1);
+}
+
+/* ---------- Log Workout ---------- */
+
+.exercise__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.exercise__name {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 650;
+}

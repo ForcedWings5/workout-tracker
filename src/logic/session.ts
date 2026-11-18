@@ -86,3 +86,17 @@ export function finishSession(session: Session): Session | null {
   if (entries.length === 0) return null;
   return { ...session, status: "finished", entries };
 }
+
+/** "2 of 14 sets": done sets out of every set that isn't skipped. */
+export function sessionProgress(session: Session): { done: number; total: number } {
+  let done = 0;
+  let total = 0;
+  for (const e of session.entries) {
+    for (const s of e.sets) {
+      if (s.skipped) continue;
+      total += 1;
+      if (s.done) done += 1;
+    }
+  }
+  return { done, total };
+}
