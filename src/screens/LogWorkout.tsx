@@ -1,26 +1,208 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useRef, useState } from "react";
+import { shortDate } from "../logic/clock";
+import { formatElapsed } from "../logic/format";
 import { splitWorkoutName } from "../logic/input";
+import { sessionProgress } from "../logic/session";
+import type { LoggedSet, Session } from "../logic/types";
 import { useDb } from "../storage/DbContext";
-import { loadLogState } from "../storage/repo";
+import { addSet, discardWorkout, finishWorkout, loadLogState, setNote, skipOrRemoveSet, updateSet } from "../storage/repo";
+import { Button } from "../ui/Button";
 import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
+import { Sheet } from "../ui/Sheet";
+import { ExerciseNotice } from "./ExerciseNotice";
 
 type Props = { sessionId: string; onClose: () => void };
+
+/** The first set, in session order, that is neither done nor skipped. */
+function currentSetOf(session: Session): { entry: number; set: number } | undefined {
+  for (let e = 0; e < session.entries.length; e++) {
+    const set = session.entries[e].sets.findIndex((s) => !s.done && !s.skipped);
+    if (set !== -1) return { entry: e, set };
+  }
+  return undefined;
+}
+
+const reducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Seconds since this session was first opened on this phone. Survives reloads. */
+function useElapsed(sessionId: string, running: boolean): number {
+  const key = `workout-timer:${sessionId}`;
+  const [startedAt] = useState(() => {
+    let stored: number | undefined;
+    try {
+      stored = Number(localStorage.getItem(key)) || undefined;
+      if (!stored) localStorage.setItem(key, String(Date.now()));
+    } catch {
+      // Storage unavailable: the timer starts from this screen.
+    }
+    return stored ?? Date.now();
+  });
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  return Math.max(0, (now - startedAt) / 1000);
+}
+
+function forgetTimer(sessionId: string) {
+  try {
+    localStorage.removeItem(`workout-timer:${sessionId}`);
+  } catch {
+    // Nothing to clean up.
+  }
+}
 
 export function LogWorkout({ sessionId, onClose }: Props) {
   const db = useDb();
   const state = useLiveQuery(() => loadLogState(db, sessionId), [db, sessionId]);
+  const [fulfilled, setFulfilled] = useState(false);
+  const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const scrollNext = useRef(false);
   const session = state?.session;
-  const { title, subtitle } = splitWorkoutName(session?.workoutName ?? "");
+  const elapsed = useElapsed(sessionId, !fulfilled);
+
+  // The session was discarded elsewhere: go back.
+  useEffect(() => {
+    if (state && !state.session && !fulfilled) onClose();
+  }, [state, fulfilled, onClose]);
+
+  // After a set is confirmed, bring the next set to the middle of the screen.
+  useEffect(() => {
+    if (!scrollNext.current) return;
+    scrollNext.current = false;
+    const next = document.querySelector<HTMLElement>('[data-current="true"]');
+    next?.scrollIntoView?.({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
+  }, [session]);
+
+  if (!session || !state) return null;
+
+  const { title, subtitle } = splitWorkoutName(session.workoutName);
+  const current = currentSetOf(session);
+  const progress = sessionProgress(session);
+
+  if (fulfilled) return <Fulfilled session={session} names={state.exercises} onDone={onClose} />;
+
+  const toggle = (entryIndex: number, setIndex: number) => {
+    const set = session.entries[entryIndex].sets[setIndex];
+    const patch: Partial<LoggedSet> = set.skipped ? { skipped: false, done: true } : { done: !set.done };
+    if (patch.done) scrollNext.current = true;
+    void updateSet(db, sessionId, entryIndex, setIndex, patch);
+  };
+
+  const fulfill = async () => {
+    setFinishing(true);
+    try {
+      const result = await finishWorkout(db, sessionId);
+      if (result === "empty") setConfirmEmpty(true);
+      else {
+        forgetTimer(sessionId);
+        setFulfilled(true);
+      }
+    } finally {
+      setFinishing(false);
+    }
+  };
+
+  const headerSubtitle = [subtitle, `${progress.done} of ${progress.total} sets`].filter(Boolean).join(" · ");
 
   return (
-    <>
-      <ScreenHeader back={{ label: "Today", onClick: onClose }} title={title} subtitle={subtitle} />
-      {session?.entries.map((entry, i) => (
-        <Notice key={`${entry.exerciseId}-${i}`}>
-          <h2 className="exercise__name">{state?.exercises[entry.exerciseId]?.name ?? "Exercise"}</h2>
-        </Notice>
-      ))}
-    </>
+    <div className="log">
+      <ScreenHeader
+        back={{ label: "Today", onClick: onClose }}
+        right={
+          <span className="log__timer" aria-label={`Elapsed ${formatElapsed(elapsed)}`}>
+            {formatElapsed(elapsed)}
+          </span>
+        }
+        title={title}
+        subtitle={headerSubtitle}
+      />
+
+      {session.entries.map((entry, i) => {
+        const exercise = state.exercises[entry.exerciseId];
+        return (
+          <ExerciseNotice
+            key={`${entry.exerciseId}-${i}`}
+            name={exercise?.name ?? "Exercise"}
+            measure={exercise?.measure ?? "reps"}
+            entry={entry}
+            lastNote={state.lastNotes[entry.exerciseId]}
+            currentSet={current?.entry === i ? current.set : undefined}
+            onPatchSet={(s, patch) => void updateSet(db, sessionId, i, s, patch)}
+            onToggleSet={(s) => toggle(i, s)}
+            onSkipSet={(s) => void skipOrRemoveSet(db, sessionId, i, s)}
+            onAddSet={() => void addSet(db, sessionId, i)}
+            onNote={(note) => void setNote(db, sessionId, i, note)}
+          />
+        );
+      })}
+
+      <div className="fulfill-spacer" />
+      <div className="fulfill-bar">
+        <Button variant="primary" onClick={fulfill} loading={finishing}>
+          Fulfill contract
+        </Button>
+      </div>
+
+      <Sheet open={confirmEmpty} onClose={() => setConfirmEmpty(false)} title="Nothing logged yet">
+        <p className="sheet__body">Discard this workout?</p>
+        <div className="sheet__actions">
+          <Button variant="outline" onClick={() => setConfirmEmpty(false)}>
+            Keep logging
+          </Button>
+          <Button
+            variant="plain"
+            onClick={async () => {
+              await discardWorkout(db, sessionId);
+              forgetTimer(sessionId);
+              setConfirmEmpty(false);
+              onClose();
+            }}
+          >
+            Discard workout
+          </Button>
+        </div>
+      </Sheet>
+    </div>
+  );
+}
+
+function Fulfilled({ session, names, onDone }: { session: Session; names: Record<string, { name: string }>; onDone: () => void }) {
+  const { title, subtitle } = splitWorkoutName(session.workoutName);
+  const { done } = sessionProgress(session);
+  return (
+    <div className="log">
+      <ScreenHeader title={title} subtitle={subtitle} />
+      <Notice aria-label="Workout summary" className="summary">
+        <p className="summary__stamp" role="status">
+          Fulfilled
+        </p>
+        <p className="summary__meta">
+          {shortDate(session.date)} · {done} {done === 1 ? "set" : "sets"} across {session.entries.length}{" "}
+          {session.entries.length === 1 ? "exercise" : "exercises"}
+        </p>
+        <ul className="summary__list">
+          {session.entries.map((e, i) => (
+            <li key={`${e.exerciseId}-${i}`}>
+              <span>{names[e.exerciseId]?.name ?? "Exercise"}</span>
+              <span className="summary__sets">
+                {e.sets.map((s) => (s.weight !== undefined ? `${s.weight}×${s.amount ?? "–"}` : `${s.amount ?? "–"}`)).join("  ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Notice>
+      <div className="fulfill-spacer" />
+      <div className="fulfill-bar">
+        <Button variant="primary" onClick={onDone}>
+          Done
+        </Button>
+      </div>
+    </div>
   );
 }

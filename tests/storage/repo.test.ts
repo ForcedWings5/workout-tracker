@@ -88,15 +88,13 @@ test("addSet pre-fills from last time's final set", async () => {
   expect((await sessionRow(second)).entries[0].sets[4]).toEqual({ weight: 75, amount: 8, done: false });
 });
 
-test("skipOrRemoveSet toggles skipped on a pre-filled set and deletes a blank one", async () => {
+test("skipOrRemoveSet toggles skipped on a pre-filled set", async () => {
   const id = await startWorkout(db, UPPER_A);
   await updateSet(db, id, 0, 0, { weight: 65, amount: 10 });
   await skipOrRemoveSet(db, id, 0, 0);
   expect((await sessionRow(id)).entries[0].sets[0]).toMatchObject({ skipped: true, done: false });
   await skipOrRemoveSet(db, id, 0, 0);
   expect((await sessionRow(id)).entries[0].sets[0].skipped).toBe(false);
-  await skipOrRemoveSet(db, id, 0, 3);
-  expect((await sessionRow(id)).entries[0].sets).toHaveLength(3);
 });
 
 test("setNote stores the note and a blank note clears it", async () => {
@@ -165,4 +163,19 @@ test("loadLogState for a missing or deleted session has no session", async () =>
   const id = await startWorkout(db, UPPER_A);
   await discardWorkout(db, id);
   expect((await loadLogState(db, id)).session).toBeUndefined();
+});
+
+test("skipOrRemoveSet skips a blank planned set instead of removing it", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await skipOrRemoveSet(db, id, 0, 0);
+  const sets = (await sessionRow(id)).entries[0].sets;
+  expect(sets).toHaveLength(4);
+  expect(sets[0]).toMatchObject({ skipped: true, done: false });
+});
+
+test("skipOrRemoveSet removes a blank set added beyond the plan", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  await addSet(db, id, 0);
+  await skipOrRemoveSet(db, id, 0, 4);
+  expect((await sessionRow(id)).entries[0].sets).toHaveLength(4);
 });

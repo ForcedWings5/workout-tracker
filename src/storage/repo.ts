@@ -1,7 +1,7 @@
 // Everything the screens call. Screens never touch Dexie tables directly.
 import { todayLocal } from "../logic/clock";
 import { nextUp } from "../logic/rotation";
-import { finishSession, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
+import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
 import type { Exercise, LoggedSet, Session, Workout } from "../logic/types";
 import type { WorkoutDB } from "./db";
 import { live, remove, save } from "./write";
@@ -99,13 +99,13 @@ export async function addSet(db: WorkoutDB, sessionId: string, entryIndex: numbe
   });
 }
 
-/** A set with values toggles "skipped"; a blank set is removed. */
+/** Toggles "skipped", except a blank extra set, which is removed. */
 export async function skipOrRemoveSet(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
     const set = entry.sets[setIndex];
     if (!set) throw new Error("Set not found");
-    if (set.weight === undefined && set.amount === undefined) {
+    if (isRemovableSet(set, setIndex, entry.planned.sets)) {
       entry.sets.splice(setIndex, 1);
     } else {
       const skipped = !set.skipped;

@@ -47,6 +47,8 @@ export function NumberField({ label, value, unit, kind, draft, struck = false, p
         autoComplete="off"
         value={text}
         placeholder={placeholder}
+        // Size to the digits, so the unit sits right after the value.
+        style={{ width: `calc(${Math.max(2, (text || placeholder || "").length)}ch + ${8}px)` }}
         onFocus={(e) => {
           focused.current = true;
           e.currentTarget.select();

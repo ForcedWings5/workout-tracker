@@ -268,9 +268,8 @@ textarea {
 }
 
 .num__input {
-  width: 100%;
   min-width: 0;
-  max-width: 5ch;
+  max-width: 100%;
   height: 44px;
   padding: 0 var(--space-1);
   border: 0;

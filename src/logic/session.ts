@@ -100,3 +100,8 @@ export function sessionProgress(session: Session): { done: number; total: number
   }
   return { done, total };
 }
+
+/** True for a blank set added with "+ Set" beyond the plan: removing it loses nothing. */
+export function isRemovableSet(set: LoggedSet, setIndex: number, plannedSets: number): boolean {
+  return setIndex >= plannedSets && set.weight === undefined && set.amount === undefined && !set.done;
+}

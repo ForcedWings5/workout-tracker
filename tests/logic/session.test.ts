@@ -1,4 +1,4 @@
-import { finishSession, lastNoteFor, prefillSets, sessionProgress, startSession } from "../../src/logic/session";
+import { finishSession, isRemovableSet, lastNoteFor, prefillSets, sessionProgress, startSession } from "../../src/logic/session";
 import type { Workout } from "../../src/logic/types";
 import { done, entry, session } from "./fixtures";
 
@@ -177,5 +177,13 @@ describe("sessionProgress", () => {
       ],
     });
     expect(sessionProgress(s)).toEqual({ done: 2, total: 4 });
+  });
+});
+
+describe("isRemovableSet", () => {
+  test("only a blank, undone set beyond the plan is removable", () => {
+    expect(isRemovableSet({ done: false }, 4, 4)).toBe(true);
+    expect(isRemovableSet({ done: false }, 3, 4)).toBe(false);
+    expect(isRemovableSet({ weight: 65, done: false }, 4, 4)).toBe(false);
   });
 });
