@@ -65,8 +65,9 @@ describe("setPlannedNumber", () => {
     expect(setPlannedNumber(bench, "targetMax", "x")).toBe("Enter a number");
   });
 
-  test("a top of the range that isn't above the bottom is dropped", () => {
-    expect(setPlannedNumber(bench, "targetMax", "6")).toEqual({ exerciseId: "x", sets: 4, targetMin: 6 });
-    expect(setPlannedNumber(bench, "targetMin", "10")).toEqual({ exerciseId: "x", sets: 4, targetMin: 10 });
+  test("a min and max that cross save nothing, so a typo never changes the other field", () => {
+    expect(setPlannedNumber(bench, "targetMax", "6")).toBe("Max must be above min");
+    expect(setPlannedNumber(bench, "targetMin", "60")).toBe("Min must be below max");
+    expect(setPlannedNumber({ exerciseId: "x", sets: 2, targetMin: 45 }, "targetMin", "60")).toEqual({ exerciseId: "x", sets: 2, targetMin: 60 });
   });
 });

@@ -17,6 +17,8 @@ export function TextField({ label, value, placeholder, inputMode, className, onC
   const [error, setError] = useState<string>();
   const focused = useRef(false);
   const latest = useRef(0);
+  /** The saved value when editing began. Every keystroke saves, so `value` may be a half-typed step. */
+  const atFocus = useRef(value);
 
   useEffect(() => {
     if (!focused.current) setText(value);
@@ -43,15 +45,21 @@ export function TextField({ label, value, placeholder, inputMode, className, onC
         value={text}
         placeholder={placeholder}
         aria-invalid={error ? true : undefined}
-        onFocus={() => (focused.current = true)}
+        onFocus={() => {
+          focused.current = true;
+          atFocus.current = value;
+        }}
         onChange={(e) => change(e.target.value)}
         onBlur={() => {
           focused.current = false;
           if (error) {
-            // Leaving a field that couldn't be saved puts the saved value back.
+            // Leaving a field that couldn't be saved puts back what it held before editing,
+            // not a half-typed step ("B" on the way to clearing "Barbell Bench Press").
+            const restore = atFocus.current;
             latest.current++;
             setError(undefined);
-            setText(value);
+            setText(restore);
+            if (restore !== value) onCommit(restore).catch((err: unknown) => console.error("Couldn't save", err));
           }
         }}
         onKeyDown={(e) => {

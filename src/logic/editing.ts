@@ -32,8 +32,8 @@ type Targets = { sets: number; targetMin: number; targetMax?: number };
 /**
  * Applies one typed target number to a planned exercise. Returns the updated copy,
  * or a message saying what's wrong (nothing is saved then). Values are rounded to
- * whole numbers. A top of the range that isn't above the bottom is dropped, which
- * makes a fixed target like "45 sec".
+ * whole numbers. A blank max makes a fixed target like "45 sec"; a min and max
+ * that cross are refused.
  */
 export function setPlannedNumber<T extends Targets>(planned: T, field: "sets" | "targetMin" | "targetMax", raw: string): T | string {
   const value = parseNumberInput(raw);
@@ -49,6 +49,9 @@ export function setPlannedNumber<T extends Targets>(planned: T, field: "sets" | 
   }
   if (value === undefined) return "Enter a number";
   copy[field] = Math.round(value);
-  if (copy.targetMax !== undefined && copy.targetMax <= copy.targetMin) delete copy.targetMax;
+  // Never quietly change the other field: a typo on the way to the right value would lose it.
+  if (copy.targetMax !== undefined && copy.targetMax <= copy.targetMin) {
+    return field === "targetMax" ? "Max must be above min" : "Min must be below max";
+  }
   return copy;
 }

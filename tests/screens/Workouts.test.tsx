@@ -132,3 +132,40 @@ test("new workout opens the editor for an empty workout at the end of the rotati
   expect(ids).toHaveLength(5);
   expect((await db.workouts.get(ids[4]))?.name).toBe("New workout");
 });
+
+test("Final #1: deleting a name one character at a time and leaving puts the old name back", async () => {
+  const { user, bench } = await editBench();
+  const name = within(bench).getByLabelText("Exercise name");
+  await user.click(name);
+  await user.keyboard("{End}" + "{Backspace}".repeat("Barbell Bench Press".length));
+  expect(within(bench).getByRole("alert")).toHaveTextContent("Give the exercise a name");
+  await user.tab();
+  await waitFor(async () => expect((await db.exercises.get(BENCH))?.name).toBe("Barbell Bench Press"));
+  expect(within(bench).getByLabelText("Exercise name")).toHaveValue("Barbell Bench Press");
+});
+
+test("Final #1: a number backspaced to blank and left goes back to what it was", async () => {
+  const { user, bench } = await editBench();
+  const max = within(bench).getByLabelText("Max reps");
+  await user.click(max);
+  await user.keyboard("{End}{Backspace}{Backspace}");
+  await user.tab();
+  // A blank max is valid (a fixed target), so it stays blank.
+  await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.exercises[0].targetMax).toBeUndefined());
+  const sets = within(bench).getByLabelText("Sets");
+  await user.click(sets);
+  await user.keyboard("{End}{Backspace}2{Backspace}");
+  await user.tab();
+  await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.exercises[0].sets).toBe(4));
+  expect(within(bench).getByLabelText("Sets")).toHaveValue("4");
+});
+
+test("Final #2: a typo in min on the way to the right value keeps max", async () => {
+  const { user, bench } = await editBench();
+  const min = within(bench).getByLabelText("Min reps");
+  await user.click(min);
+  await user.keyboard("{End}0{Backspace}");
+  await user.tab();
+  const plan = (await db.workouts.get(UPPER_A))?.exercises[0];
+  expect(plan).toMatchObject({ targetMin: 6, targetMax: 10 });
+});
