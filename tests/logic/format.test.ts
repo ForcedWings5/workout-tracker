@@ -1,4 +1,4 @@
-import { formatElapsed, formatTarget, holdPercent, setLabel } from "../../src/logic/format";
+import { formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
 
 test("formatTarget", () => {
   expect(formatTarget({ sets: 4, targetMin: 6, targetMax: 10 }, "reps")).toBe("4 × 6–10");
@@ -25,4 +25,14 @@ test("holdPercent is proportional to the seconds held, capped at the target", ()
   expect(holdPercent(90, { targetMin: 45 })).toBe(100);
   expect(holdPercent(undefined, { targetMin: 45 })).toBe(0);
   expect(holdPercent(30, { targetMin: 30, targetMax: 60 })).toBe(50);
+});
+
+test("an exercise added mid-session has no target to show", () => {
+  expect(formatTarget({ sets: 1, targetMin: 0 }, "reps")).toBe("");
+  expect(targetHint({ targetMin: 0 })).toBeUndefined();
+});
+
+test("targetHint is the range a blank set shows", () => {
+  expect(targetHint({ targetMin: 6, targetMax: 10 })).toBe("6–10");
+  expect(targetHint({ targetMin: 45 })).toBe("45");
 });

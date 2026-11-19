@@ -12,6 +12,7 @@ import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { Sheet } from "../ui/Sheet";
 import { TextField } from "../ui/TextField";
+import { ExercisePicker } from "./ExercisePicker";
 
 type Props = { workoutId: string; onClose: () => void };
 
@@ -24,6 +25,9 @@ export function EditWorkout({ workoutId, onClose }: Props) {
   const db = useDb();
   const state = useLiveQuery(() => loadEditWorkout(db, workoutId), [db, workoutId]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [picking, setPicking] = useState(false);
+  /** Index of an exercise just added, which opens unfolded. */
+  const [added, setAdded] = useState<number>();
   const deleting = useRef(false);
 
   // The workout was deleted: go back.
@@ -68,6 +72,7 @@ export function EditWorkout({ workoutId, onClose }: Props) {
           key={`${planned.exerciseId}-${i}`}
           planned={planned}
           exercise={exercises[planned.exerciseId]}
+          initiallyOpen={added === i}
           first={i === 0}
           last={i === workout.exercises.length - 1}
           onNumber={(field, text) =>
@@ -92,10 +97,23 @@ export function EditWorkout({ workoutId, onClose }: Props) {
       ))}
 
       <div className="board-actions">
+        <Button variant="board" onClick={() => setPicking(true)}>
+          Add exercise
+        </Button>
         <Button variant="text-board" onClick={() => setConfirmDelete(true)}>
           Delete workout
         </Button>
       </div>
+
+      <ExercisePicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={(exercise) => {
+          setPicking(false);
+          setAdded(workout.exercises.length);
+          log(patch((w) => void w.exercises.push(startingTargets(exercise))));
+        }}
+      />
       <div className="tabbar-spacer" />
 
       <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this workout?">
@@ -121,8 +139,16 @@ export function EditWorkout({ workoutId, onClose }: Props) {
   );
 }
 
+/** What a newly added exercise starts with: 3 × 8–12, or 3 × 30 sec for a timed one. */
+function startingTargets(exercise: Exercise): PlannedExercise {
+  return exercise.measure === "seconds"
+    ? { exerciseId: exercise.id, sets: 3, targetMin: 30 }
+    : { exerciseId: exercise.id, sets: 3, targetMin: 8, targetMax: 12 };
+}
+
 type PlanProps = {
   planned: PlannedExercise;
+  initiallyOpen?: boolean;
   exercise?: Exercise;
   first: boolean;
   last: boolean;
@@ -134,8 +160,8 @@ type PlanProps = {
   onRemove: () => void;
 };
 
-function PlanNotice({ planned, exercise, first, last, onNumber, onLabel, onRename, onMeasure, onMove, onRemove }: PlanProps) {
-  const [open, setOpen] = useState(false);
+function PlanNotice({ planned, initiallyOpen = false, exercise, first, last, onNumber, onLabel, onRename, onMeasure, onMove, onRemove }: PlanProps) {
+  const [open, setOpen] = useState(initiallyOpen);
   const name = exercise?.name ?? "Exercise";
   const measure = exercise?.measure ?? "reps";
   const unit = measure === "seconds" ? "sec" : "reps";

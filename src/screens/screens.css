@@ -16,6 +16,10 @@
   margin: var(--space-3) var(--space-3) 0;
 }
 
+.board-actions--end {
+  margin-top: var(--space-6);
+}
+
 .empty-text {
   font-size: 16px;
   line-height: 22px;
@@ -329,4 +333,90 @@ button.set__n::before {
 
 .plan__spacer {
   flex: 1;
+}
+
+/* ---------- Exercise picker ---------- */
+
+.picker__search {
+  margin-top: var(--space-4);
+  flex: none;
+}
+
+.picker__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: var(--space-2) calc(-1 * var(--space-4)) 0;
+  padding: 0 var(--space-4);
+}
+
+.picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.picker__list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.picker__option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-3) 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  touch-action: manipulation;
+  transition: filter 150ms ease-out;
+}
+
+.picker__option:active {
+  filter: brightness(0.92);
+}
+
+.picker__unit {
+  flex: none;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.picker__create {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+
+.picker__list + .picker__create {
+  margin-top: 0;
+}
+
+.picker__create .sheet__body {
+  margin-top: 0;
+}
+
+.picker__footer {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--rule);
+}
+
+/* The browser's blue clear button isn't in the palette; selecting the text clears it. */
+.picker__search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
 }

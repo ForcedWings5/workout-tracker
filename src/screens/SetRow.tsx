@@ -1,4 +1,4 @@
-import { holdPercent, setLabel, unitFor } from "../logic/format";
+import { holdPercent, setLabel, targetHint, unitFor } from "../logic/format";
 import { isRemovableSet } from "../logic/session";
 import type { LoggedSet, Measure, PlannedExercise } from "../logic/types";
 import { MarkBox, type MarkState } from "../ui/MarkBox";
@@ -29,7 +29,7 @@ export function SetRow({ index, set, measure, planned, current, onPatch, onToggl
     : isRemovableSet(set, index, planned.sets)
       ? `Remove set ${n}`
       : `Skip set ${n}`;
-  const target = planned.targetMax !== undefined ? `${planned.targetMin}–${planned.targetMax}` : `${planned.targetMin}`;
+  const target = targetHint(planned) ?? "–";
   const draft = !set.done;
 
   return (

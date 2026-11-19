@@ -533,6 +533,13 @@ textarea.field {
   margin-top: var(--space-5);
 }
 
+/* A sheet with a list: the list scrolls, the title and search stay put. */
+.sheet--tall {
+  display: flex;
+  flex-direction: column;
+  height: min(85dvh, 720px);
+}
+
 @keyframes sheet-up {
   from {
     transform: translateY(24px);

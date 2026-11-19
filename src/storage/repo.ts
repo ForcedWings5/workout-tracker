@@ -301,3 +301,45 @@ export async function loadEditWorkout(db: WorkoutDB, id: string): Promise<EditWo
     exercises: Object.fromEntries(exercises.map((x) => [x.id, x])),
   };
 }
+
+// ---------- One-off workouts and the exercise picker ----------
+
+/** A one-off workout: no workoutId, so it never moves next up. */
+export async function startEmptyWorkout(db: WorkoutDB): Promise<string> {
+  return db.transaction("rw", db.sessions, async () => {
+    const sessions = live(await db.sessions.toArray());
+    if (sessions.some((s) => s.status === "in_progress")) throw new Error("A workout is already in progress");
+    const created = await save(db.sessions, {
+      id: newId(),
+      workoutName: "Workout",
+      date: todayLocal(),
+      status: "in_progress",
+      entries: [],
+    });
+    return created.id;
+  });
+}
+
+/** Adds an exercise to this session only, with one set pre-filled from last time. */
+export async function addExerciseToSession(db: WorkoutDB, sessionId: string, exerciseId: string): Promise<void> {
+  const history = live(await db.sessions.toArray());
+  await mutateSession(db, sessionId, (s) => {
+    const source = prefillSource(exerciseId, s.workoutId, history);
+    s.entries.push({ exerciseId, planned: { sets: 1, targetMin: 0 }, sets: [prefillSetAt(source, 0)] });
+  });
+}
+
+export async function renameSession(db: WorkoutDB, sessionId: string, name: string): Promise<void> {
+  const clean = cleanName(name);
+  if (!clean) throw new Error("Give the workout a name");
+  await mutateSession(db, sessionId, (s) => {
+    s.workoutName = clean;
+  });
+}
+
+/** Exercises the picker offers: not deleted, not archived, by name. */
+export async function loadExercises(db: WorkoutDB): Promise<Exercise[]> {
+  return live(await db.exercises.toArray())
+    .filter((e) => !e.archived)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

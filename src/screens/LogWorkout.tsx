@@ -6,12 +6,25 @@ import { splitWorkoutName } from "../logic/input";
 import { sessionProgress } from "../logic/session";
 import type { Session } from "../logic/types";
 import { useDb } from "../storage/DbContext";
-import { addSet, discardWorkout, finishWorkout, loadLogState, setNote, skipOrRemoveSet, toggleSetDone, updateSet } from "../storage/repo";
+import {
+  addExerciseToSession,
+  addSet,
+  discardWorkout,
+  finishWorkout,
+  loadLogState,
+  renameSession,
+  setNote,
+  skipOrRemoveSet,
+  toggleSetDone,
+  updateSet,
+} from "../storage/repo";
 import { Button } from "../ui/Button";
 import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { Sheet } from "../ui/Sheet";
+import { TextField } from "../ui/TextField";
 import { ExerciseNotice } from "./ExerciseNotice";
+import { ExercisePicker } from "./ExercisePicker";
 
 type Props = { sessionId: string; onClose: () => void };
 
@@ -67,6 +80,7 @@ export function LogWorkout({ sessionId, onClose }: Props) {
   const [fulfilled, setFulfilled] = useState(false);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [picking, setPicking] = useState(false);
   const scrollNext = useRef(false);
   const session = state?.session;
   const elapsed = useElapsed(sessionId, !fulfilled);
@@ -114,7 +128,7 @@ export function LogWorkout({ sessionId, onClose }: Props) {
     }
   };
 
-  const headerSubtitle = [subtitle, `${progress.done} of ${progress.total} sets`].filter(Boolean).join(" · ");
+  const headerSubtitle = [subtitle, progress.total > 0 && `${progress.done} of ${progress.total} ${progress.total === 1 ? "set" : "sets"}`].filter(Boolean).join(" · ");
 
   return (
     <div className="log">
@@ -128,6 +142,18 @@ export function LogWorkout({ sessionId, onClose }: Props) {
         title={title}
         subtitle={headerSubtitle}
       />
+
+      {!session.workoutId && (
+        <Notice aria-label="Workout">
+          <TextField label="Workout name" value={session.workoutName} onCommit={(text) => renameSession(db, sessionId, text)} />
+        </Notice>
+      )}
+
+      {session.entries.length === 0 && (
+        <Notice>
+          <p className="empty-text">No exercises yet. Add one below and its sets start from last time.</p>
+        </Notice>
+      )}
 
       {session.entries.map((entry, i) => {
         const exercise = state.exercises[entry.exerciseId];
@@ -147,6 +173,21 @@ export function LogWorkout({ sessionId, onClose }: Props) {
           />
         );
       })}
+
+      <div className="board-actions">
+        <Button variant="board" onClick={() => setPicking(true)}>
+          Add exercise
+        </Button>
+      </div>
+
+      <ExercisePicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={(exercise) => {
+          setPicking(false);
+          run(addExerciseToSession(db, sessionId, exercise.id));
+        }}
+      />
 
       <div className="fulfill-spacer" />
       <div className="fulfill-bar">
