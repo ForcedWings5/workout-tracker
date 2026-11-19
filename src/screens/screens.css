@@ -283,3 +283,50 @@ button.set__n::before {
   font-variant-numeric: tabular-nums;
   white-space: pre-wrap;
 }
+
+/* ---------- Workouts ---------- */
+
+.workout-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.workout-row__edit {
+  flex: 1;
+  min-width: 0;
+}
+
+.workout-row__moves {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-5) var(--space-2) var(--space-3) 0;
+}
+
+/* ---------- Edit Workout ---------- */
+
+.plan {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--rule);
+}
+
+.plan__numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.plan__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+}
+
+.plan__spacer {
+  flex: 1;
+}

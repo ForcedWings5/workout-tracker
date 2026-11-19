@@ -263,3 +263,41 @@ export async function deleteExercise(db: WorkoutDB, id: string): Promise<"archiv
     return "deleted";
   });
 }
+
+/** Reads the stored workout, lets `change` edit a copy, and saves it, in one step. */
+export async function patchWorkout(db: WorkoutDB, id: string, change: (w: Workout) => void): Promise<void> {
+  await db.transaction("rw", db.workouts, async () => {
+    const current = await db.workouts.get(id);
+    if (!current || current.deleted) throw new Error("Workout not found");
+    const copy = structuredClone(current);
+    change(copy);
+    await save(db.workouts, copy);
+  });
+}
+
+/** Measure belongs to the exercise, so this changes it in every workout. */
+export async function setExerciseMeasure(db: WorkoutDB, id: string, measure: Measure): Promise<void> {
+  await db.transaction("rw", db.exercises, async () => {
+    const exercise = await db.exercises.get(id);
+    if (!exercise || exercise.deleted) throw new Error("Exercise not found");
+    if (exercise.measure !== measure) await save(db.exercises, { ...exercise, measure });
+  });
+}
+
+export type WorkoutList = { workouts: Workout[]; rotationIds: string[] };
+
+/** Workouts in rotation order, then any outside it. */
+export async function loadWorkoutList(db: WorkoutDB): Promise<WorkoutList> {
+  const [{ workouts }, ids] = await Promise.all([loadTodayState(db), rotationIds(db)]);
+  return { workouts, rotationIds: ids.filter((id) => workouts.some((w) => w.id === id)) };
+}
+
+export type EditWorkoutState = { workout?: Workout; exercises: Record<string, Exercise> };
+
+export async function loadEditWorkout(db: WorkoutDB, id: string): Promise<EditWorkoutState> {
+  const [workout, exercises] = await Promise.all([db.workouts.get(id), db.exercises.toArray()]);
+  return {
+    workout: workout && !workout.deleted ? workout : undefined,
+    exercises: Object.fromEntries(exercises.map((x) => [x.id, x])),
+  };
+}

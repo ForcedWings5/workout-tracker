@@ -1,0 +1,68 @@
+import { useEffect, useRef, useState, type HTMLAttributes } from "react";
+
+type Props = {
+  label: string;
+  /** The saved value. Shown again when the field is left with something that couldn't be saved. */
+  value: string;
+  placeholder?: string;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  className?: string;
+  /** Saves the typed text. A rejected promise's message is shown under the field. */
+  onCommit: (text: string) => Promise<void>;
+};
+
+/** A labelled field on a notice. Saves on every change, so nothing waits for a blur. */
+export function TextField({ label, value, placeholder, inputMode, className, onCommit }: Props) {
+  const [text, setText] = useState(value);
+  const [error, setError] = useState<string>();
+  const focused = useRef(false);
+  const latest = useRef(0);
+
+  useEffect(() => {
+    if (!focused.current) setText(value);
+  }, [value]);
+
+  const change = (raw: string) => {
+    setText(raw);
+    const attempt = ++latest.current;
+    onCommit(raw).then(
+      () => attempt === latest.current && setError(undefined),
+      (err: unknown) => attempt === latest.current && setError(err instanceof Error ? err.message : "Couldn't save"),
+    );
+  };
+
+  return (
+    <label className={className ? `form-field ${className}` : "form-field"}>
+      <span className="form-field__label">{label}</span>
+      <input
+        className="field"
+        type="text"
+        inputMode={inputMode}
+        enterKeyHint="done"
+        autoComplete="off"
+        value={text}
+        placeholder={placeholder}
+        aria-invalid={error ? true : undefined}
+        onFocus={() => (focused.current = true)}
+        onChange={(e) => change(e.target.value)}
+        onBlur={() => {
+          focused.current = false;
+          if (error) {
+            // Leaving a field that couldn't be saved puts the saved value back.
+            latest.current++;
+            setError(undefined);
+            setText(value);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+      />
+      {error && (
+        <span className="form-field__error" role="alert">
+          {error}
+        </span>
+      )}
+    </label>
+  );
+}

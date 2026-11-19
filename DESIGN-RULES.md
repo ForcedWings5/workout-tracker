@@ -215,7 +215,7 @@ An empty notice that says what to do, never "Nothing here." For example: "No ses
 - **Today:** the board, with the title "Today". The next-up workout is a large notice with its name in the 38px blackletter, the subtitle, "6 exercises · last 11/12", and the primary "Start workout". Below it, the other three workouts are smaller notices with 28px titles, tappable to start instead. An in-progress session replaces the next-up notice with "Resume" and "Discard".
 - **Log Workout:** see the direction contract's first viewport (`.impeccable/surfaces/src-app-tsx.md`). Confirming a set scrolls the next set into the same spot on screen.
 - **Progress:** a list notice of exercises, most recent first. Tapping one opens its chart notice, then past sessions as rows with weight × reps and notes.
-- **Workouts:** a notice per workout in rotation order, with drag handles to reorder. Editing a workout opens the same notice layout as Log Workout, but showing targets instead of sets.
+- **Workouts:** a notice per workout in rotation order, with Move up / Move down buttons to reorder. Editing a workout opens the same notice layout as Log Workout, but showing targets instead of sets.
 - **Settings:** notices for Cloud backup (status line, "Sync now", sign in or out), Backup file (export and import), and a plain note: "Always open Workout Tracker from the home-screen icon."
 
 ## Motion

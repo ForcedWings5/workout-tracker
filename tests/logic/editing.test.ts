@@ -1,4 +1,4 @@
-import { cleanName, findExerciseByName, moveItem, normalizeName } from "../../src/logic/editing";
+import { cleanName, findExerciseByName, moveItem, normalizeName, setPlannedNumber } from "../../src/logic/editing";
 import type { Exercise } from "../../src/logic/types";
 
 const ex = (id: string, name: string): Exercise => ({
@@ -41,4 +41,32 @@ test("moveItem never changes the list it was given", () => {
   const list = ["a", "b", "c"];
   moveItem(list, 0, 1);
   expect(list).toEqual(["a", "b", "c"]);
+});
+
+describe("setPlannedNumber", () => {
+  const bench = { exerciseId: "x", sets: 4, targetMin: 6, targetMax: 10 };
+
+  test("sets takes a whole number of at least 1", () => {
+    expect(setPlannedNumber(bench, "sets", "5")).toEqual({ ...bench, sets: 5 });
+    expect(setPlannedNumber(bench, "sets", "0")).toBe("At least 1 set");
+    expect(setPlannedNumber(bench, "sets", "")).toBe("At least 1 set");
+    expect(setPlannedNumber(bench, "sets", "3.6")).toEqual({ ...bench, sets: 4 });
+  });
+
+  test("targetMin needs a number", () => {
+    expect(setPlannedNumber(bench, "targetMin", "8")).toEqual({ ...bench, targetMin: 8 });
+    expect(setPlannedNumber(bench, "targetMin", "")).toBe("Enter a number");
+    expect(setPlannedNumber(bench, "targetMin", "abc")).toBe("Enter a number");
+  });
+
+  test("a blank targetMax makes a fixed target", () => {
+    expect(setPlannedNumber(bench, "targetMax", "")).toEqual({ exerciseId: "x", sets: 4, targetMin: 6 });
+    expect(setPlannedNumber(bench, "targetMax", "12")).toEqual({ ...bench, targetMax: 12 });
+    expect(setPlannedNumber(bench, "targetMax", "x")).toBe("Enter a number");
+  });
+
+  test("a top of the range that isn't above the bottom is dropped", () => {
+    expect(setPlannedNumber(bench, "targetMax", "6")).toEqual({ exerciseId: "x", sets: 4, targetMin: 6 });
+    expect(setPlannedNumber(bench, "targetMin", "10")).toEqual({ exerciseId: "x", sets: 4, targetMin: 10 });
+  });
 });

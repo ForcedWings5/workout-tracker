@@ -6,6 +6,10 @@ import {
   deleteWorkout,
   finishWorkout,
   getOrCreateExercise,
+  loadEditWorkout,
+  loadWorkoutList,
+  patchWorkout,
+  setExerciseMeasure,
   loadTodayState,
   renameExercise,
   saveWorkout,
@@ -126,4 +130,40 @@ test("deleteExercise without history deletes it", async () => {
 test("deleteExercise counts an in-progress session as history", async () => {
   await startWorkout(db, UPPER_A);
   expect(await deleteExercise(db, BENCH)).toBe("archived");
+});
+
+test("patchWorkout edits the stored workout in one step", async () => {
+  await patchWorkout(db, UPPER_A, (w) => {
+    w.exercises[0].sets = 5;
+  });
+  await patchWorkout(db, UPPER_A, (w) => {
+    w.name = "Upper A: Push";
+  });
+  expect(await workout(UPPER_A)).toMatchObject({ name: "Upper A: Push", dirty: 1 });
+  expect((await workout(UPPER_A)).exercises[0].sets).toBe(5);
+});
+
+test("patchWorkout refuses a deleted workout", async () => {
+  await deleteWorkout(db, UPPER_A);
+  await expect(patchWorkout(db, UPPER_A, () => {})).rejects.toThrow("Workout not found");
+});
+
+test("setExerciseMeasure changes the exercise everywhere", async () => {
+  await setExerciseMeasure(db, BENCH, "seconds");
+  expect(await db.exercises.get(BENCH)).toMatchObject({ measure: "seconds", dirty: 1 });
+});
+
+test("loadWorkoutList gives workouts in rotation order with the rotation ids", async () => {
+  await setRotation(db, [LOWER_A, UPPER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
+  const list = await loadWorkoutList(db);
+  expect(list.rotationIds[0]).toBe(LOWER_A);
+  expect(list.workouts.map((w) => w.id).slice(0, 2)).toEqual([LOWER_A, UPPER_A]);
+});
+
+test("loadEditWorkout returns the workout and its exercises", async () => {
+  const state = await loadEditWorkout(db, UPPER_A);
+  expect(state.workout?.id).toBe(UPPER_A);
+  expect(state.exercises[BENCH].name).toBe("Barbell Bench Press");
+  await deleteWorkout(db, UPPER_A);
+  expect((await loadEditWorkout(db, UPPER_A)).workout).toBeUndefined();
 });
