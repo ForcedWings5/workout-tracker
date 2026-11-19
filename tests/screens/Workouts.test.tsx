@@ -56,7 +56,7 @@ test("changing bench sets to 5 and leaving the field saves it", async () => {
   await user.type(sets, "5");
   await user.tab();
   await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.exercises[0].sets).toBe(5));
-  expect(within(bench).getByText("5 × 6–10")).toBeInTheDocument();
+  expect(await within(bench).findByText("5 × 6–10")).toBeInTheDocument();
 });
 
 test("a blank sets field shows what's wrong and saves nothing", async () => {
@@ -74,7 +74,7 @@ test("renaming the workout saves as you type", async () => {
   await user.clear(name);
   await user.type(name, "Upper A: Push");
   await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.name).toBe("Upper A: Push"));
-  expect(screen.getByText("Push")).toBeInTheDocument();
+  expect(await screen.findByText("Push")).toBeInTheDocument();
 });
 
 test("renaming an exercise renames it everywhere", async () => {
