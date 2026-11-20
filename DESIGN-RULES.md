@@ -14,7 +14,7 @@ The fantasy lives in four places only: the palette, the title lettering, the nai
 
 1. **The task comes first.** Someone who has used any workout app should know where everything is before they notice the theme.
 2. **Data sits on notices, never on the bare board.** Every number, input, and chart is dark ink on a light notice, so it reads under bright gym lights. The dark board only frames them.
-3. **Red ink means done.** Red is for confirmed sets and the one primary action on a screen. Nothing decorative is red.
+3. **Red ink means done.** Red is for confirmed sets, the one primary action on a screen, and text buttons on a notice. Nothing decorative is red.
 4. **Flat, not costumed.** Solid colors only: no wood grain, parchment texture, burnt edges, grunge, or gradients.
 5. **Faster than Notes.** If a flourish costs a tap or a second, it goes.
 
@@ -80,7 +80,7 @@ Dark-mode contrast: ink 11.0, ink-2 6.7, draft 4.2, red-ink 4.8, on-red on red-i
 
 ### Color jobs
 
-- **Red ink:** confirmed sets, the primary action, "+ Set", and the date on a last note. Nothing else.
+- **Red ink:** confirmed sets, the primary action, text buttons on a notice ("+ Set", "Edit", "Cancel"), and the date on a last note. Nothing else.
 - **Record gold:** a new personal best, until you've seen it.
 - **Draft:** pre-filled values, and nothing else.
 - **No per-workout colors.** A workout is identified by its name and its place in the rotation.
@@ -264,7 +264,7 @@ These ship with browser defaults unless they're set, so they're themed too:
 - Wood grain, parchment, paper texture, burnt edges, stains, or any other texture image
 - Gradients, glass, blur, glows, or hard offset shadows
 - ✕ or a strikethrough for a *done* set (strikethrough means skipped)
-- Red on anything that isn't confirmed or the primary action
+- Red on anything that isn't a confirmed set, the primary action, a text button on a notice, or a last-note date
 - Typed glyphs or emoji as icons
 - Uppercase letter-spaced eyebrow labels above headings
 - Nested notices, or cards inside notices
