@@ -5,7 +5,7 @@ import { splitWorkoutName } from "../logic/input";
 import { sessionProgress } from "../logic/session";
 import type { Session, Workout } from "../logic/types";
 import { useDb } from "../storage/DbContext";
-import { discardWorkout, loadTodayState, startWorkout } from "../storage/repo";
+import { discardWorkout, loadTodayState, startEmptyWorkout, startWorkout } from "../storage/repo";
 import { Button } from "../ui/Button";
 import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
@@ -23,15 +23,16 @@ export function Today({ onOpenLog }: Props) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [starting, setStarting] = useState(false);
 
-  const start = async (workoutId: string) => {
+  const begin = async (create: () => Promise<string>) => {
     if (starting) return;
     setStarting(true);
     try {
-      onOpenLog(await startWorkout(db, workoutId));
+      onOpenLog(await create());
     } finally {
       setStarting(false);
     }
   };
+  const start = (workoutId: string) => begin(() => startWorkout(db, workoutId));
 
   if (!state) return <ScreenHeader title="Today" />;
 
@@ -73,6 +74,14 @@ export function Today({ onOpenLog }: Props) {
             );
           })}
         </>
+      )}
+
+      {!inProgress && (
+        <div className="board-actions board-actions--end">
+          <Button variant="board" onClick={() => begin(() => startEmptyWorkout(db))} disabled={starting}>
+            Start empty workout
+          </Button>
+        </div>
       )}
 
       <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title="Discard this workout?">
@@ -132,7 +141,7 @@ function InProgress({ session, onResume, onDiscard }: { session: Session; onResu
           <span>In progress since {shortDate(session.date)}</span>
           {" · "}
           <span>
-            {done} of {total} sets
+            {done} of {total} {total === 1 ? "set" : "sets"}
           </span>
         </p>
         <h2 className="contract__title">{title}</h2>

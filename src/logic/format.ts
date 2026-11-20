@@ -4,9 +4,16 @@ type Planned = Omit<PlannedExercise, "exerciseId">;
 
 export const unitFor = (measure: Measure) => (measure === "seconds" ? "sec" : "reps");
 
-/** "4 × 6–10", "2 × 45 sec", "2 × 8–12 per leg". */
+/** The range a blank set shows as a hint: "6–10" or "45". None for an exercise added mid-session. */
+export function targetHint(planned: Pick<Planned, "targetMin" | "targetMax">): string | undefined {
+  if (planned.targetMax !== undefined) return `${planned.targetMin}–${planned.targetMax}`;
+  return planned.targetMin > 0 ? `${planned.targetMin}` : undefined;
+}
+
+/** "4 × 6–10", "2 × 45 sec", "2 × 8–12 per leg". Empty for an exercise added mid-session, which has no target. */
 export function formatTarget(planned: Planned, measure: Measure): string {
-  const range = planned.targetMax !== undefined ? `${planned.targetMin}–${planned.targetMax}` : `${planned.targetMin}`;
+  const range = targetHint(planned);
+  if (range === undefined) return "";
   const unit = measure === "seconds" ? " sec" : "";
   const label = planned.label ? ` ${planned.label}` : "";
   return `${planned.sets} × ${range}${unit}${label}`;

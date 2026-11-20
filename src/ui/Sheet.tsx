@@ -4,11 +4,13 @@ type Props = {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** Extra class, e.g. "sheet--tall" for a sheet with a scrolling list. */
+  className?: string;
   children: ReactNode;
 };
 
 /** A bottom sheet for confirmations only. Tapping the scrim or pressing Escape closes it. */
-export function Sheet({ open, onClose, title, children }: Props) {
+export function Sheet({ open, onClose, title, className, children }: Props) {
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -31,7 +33,7 @@ export function Sheet({ open, onClose, title, children }: Props) {
     <div className="sheet-scrim" onClick={onClose}>
       <div
         ref={ref}
-        className="sheet"
+        className={className ? `sheet ${className}` : "sheet"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
