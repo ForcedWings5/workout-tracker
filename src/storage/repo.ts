@@ -135,6 +135,30 @@ export async function skipOrRemoveSet(db: WorkoutDB, sessionId: string, entryInd
   });
 }
 
+/** The entry at `entryIndex`, refused if it isn't the exercise the screen showed there. */
+function expectedEntry(s: Session, entryIndex: number, exerciseId: string) {
+  const entry = entryAt(s, entryIndex);
+  if (entry.exerciseId !== exerciseId) throw new Error("Exercise not found in session");
+  return entry;
+}
+
+/** Deletes one set from today's session, done or not. The workout is never touched. */
+export async function deleteSessionSet(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number, exerciseId: string): Promise<void> {
+  await mutateSession(db, sessionId, (s) => {
+    const entry = expectedEntry(s, entryIndex, exerciseId);
+    if (!entry.sets[setIndex]) throw new Error("Set not found");
+    entry.sets.splice(setIndex, 1);
+  });
+}
+
+/** Removes an exercise and its sets from today's session only. */
+export async function removeSessionEntry(db: WorkoutDB, sessionId: string, entryIndex: number, exerciseId: string): Promise<void> {
+  await mutateSession(db, sessionId, (s) => {
+    expectedEntry(s, entryIndex, exerciseId);
+    s.entries.splice(entryIndex, 1);
+  });
+}
+
 export async function setNote(db: WorkoutDB, sessionId: string, entryIndex: number, note: string): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
