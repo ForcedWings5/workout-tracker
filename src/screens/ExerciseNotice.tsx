@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { CircleMinus, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { shortDate } from "../logic/clock";
 import { formatTarget } from "../logic/format";
@@ -18,14 +18,37 @@ type Props = {
   onSkipSet: (setIndex: number) => void;
   onAddSet: () => void;
   onNote: (note: string) => void;
+  /** Delete mode: sets and the exercise get delete buttons, everything else is inert. */
+  deleting?: boolean;
+  onDeleteSet: (setIndex: number) => void;
+  onRemove: () => void;
 };
 
-export function ExerciseNotice({ name, measure, entry, lastNote, currentSet, onPatchSet, onToggleSet, onSkipSet, onAddSet, onNote }: Props) {
+export function ExerciseNotice({
+  name,
+  measure,
+  entry,
+  lastNote,
+  currentSet,
+  onPatchSet,
+  onToggleSet,
+  onSkipSet,
+  onAddSet,
+  onNote,
+  deleting = false,
+  onDeleteSet,
+  onRemove,
+}: Props) {
   return (
     <Notice aria-label={name} className="exercise">
-      <div className="exercise__head">
+      <div className={deleting ? "exercise__head exercise__head--deleting" : "exercise__head"}>
         <h2 className="exercise__name">{name}</h2>
         <span className="exercise__target">{formatTarget(entry.planned, measure)}</span>
+        {deleting && (
+          <button type="button" className="btn btn--plain delete-btn" aria-label={`Remove ${name} from today`} onClick={onRemove}>
+            <CircleMinus size={24} strokeWidth={2} aria-hidden="true" />
+          </button>
+        )}
       </div>
       {lastNote && (
         <p className="last-note">
@@ -46,19 +69,22 @@ export function ExerciseNotice({ name, measure, entry, lastNote, currentSet, onP
             onPatch={(patch) => onPatchSet(i, patch)}
             onToggle={() => onToggleSet(i)}
             onSkip={() => onSkipSet(i)}
+            deleting={deleting}
+            exerciseName={name}
+            onDelete={() => onDeleteSet(i)}
           />
         ))}
       </div>
-      <button type="button" className="btn btn--text exercise__add" aria-label={`Add a set to ${name}`} onClick={onAddSet}>
+      <button type="button" className="btn btn--text exercise__add" aria-label={`Add a set to ${name}`} disabled={deleting} onClick={onAddSet}>
         <Plus size={20} strokeWidth={2} aria-hidden="true" />
         Set
       </button>
-      <NoteField name={name} value={entry.note ?? ""} onCommit={onNote} />
+      <NoteField name={name} value={entry.note ?? ""} disabled={deleting} onCommit={onNote} />
     </Notice>
   );
 }
 
-function NoteField({ name, value, onCommit }: { name: string; value: string; onCommit: (note: string) => void }) {
+function NoteField({ name, value, disabled, onCommit }: { name: string; value: string; disabled: boolean; onCommit: (note: string) => void }) {
   const [text, setText] = useState(value);
   const focused = useRef(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -82,6 +108,7 @@ function NoteField({ name, value, onCommit }: { name: string; value: string; onC
       rows={1}
       aria-label={`Note for ${name}`}
       placeholder="Add a note…"
+      disabled={disabled}
       value={text}
       onFocus={() => (focused.current = true)}
       onChange={(e) => {

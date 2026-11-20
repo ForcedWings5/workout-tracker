@@ -420,3 +420,65 @@ button.set__n::before {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* ---------- Delete mode ---------- */
+
+.log__corner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.log__trash {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+.exercise__head--deleting {
+  align-items: center;
+}
+
+.exercise__head--deleting .exercise__name {
+  flex: 1;
+}
+
+/* Same footprint as the mark box it replaces, so the column stays put. */
+.delete-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  justify-self: end;
+  flex: none;
+}
+
+/* A set's value as text, matching the number field's metrics. */
+.num__value {
+  padding: 0 var(--space-1);
+  font-size: 24px;
+  line-height: 44px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.num--draft .num__value {
+  color: var(--draft);
+  font-weight: 500;
+}
+
+.num--struck .num__value {
+  text-decoration: line-through;
+}
+
+/* Inert in delete mode, in the standard disabled look. */
+.exercise__note:disabled {
+  opacity: 0.4;
+}
+
+/* Keeps the heading the same height with or without its delete button. */
+.exercise__head--deleting .delete-btn {
+  margin-block: -10px;
+}
