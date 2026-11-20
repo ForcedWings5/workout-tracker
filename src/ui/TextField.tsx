@@ -7,12 +7,13 @@ type Props = {
   placeholder?: string;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   className?: string;
+  disabled?: boolean;
   /** Saves the typed text. A rejected promise's message is shown under the field. */
   onCommit: (text: string) => Promise<void>;
 };
 
 /** A labelled field on a notice. Saves on every change, so nothing waits for a blur. */
-export function TextField({ label, value, placeholder, inputMode, className, onCommit }: Props) {
+export function TextField({ label, value, placeholder, inputMode, className, disabled, onCommit }: Props) {
   const [text, setText] = useState(value);
   const [error, setError] = useState<string>();
   const focused = useRef(false);
@@ -44,6 +45,7 @@ export function TextField({ label, value, placeholder, inputMode, className, onC
         autoComplete="off"
         value={text}
         placeholder={placeholder}
+        disabled={disabled}
         aria-invalid={error ? true : undefined}
         onFocus={() => {
           focused.current = true;

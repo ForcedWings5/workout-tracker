@@ -106,3 +106,11 @@ test("delete mode starts off when the screen opens again", async () => {
   expect(await screen.findByRole("button", { name: "Delete sets or exercises" })).toBeInTheDocument();
   expect(screen.queryByText("Tap a set or exercise to delete it.")).not.toBeInTheDocument();
 });
+
+test("Final: a one-off workout's name field is inert in delete mode", async () => {
+  const id = await startEmptyWorkout(db);
+  const user = userEvent.setup();
+  renderLog(id);
+  await user.click(await screen.findByRole("button", { name: "Delete sets or exercises" }));
+  expect(screen.getByLabelText("Workout name")).toBeDisabled();
+});

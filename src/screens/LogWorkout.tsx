@@ -172,7 +172,7 @@ export function LogWorkout({ sessionId, onClose }: Props) {
 
       {!session.workoutId && (
         <Notice aria-label="Workout">
-          <TextField label="Workout name" value={session.workoutName} onCommit={(text) => renameSession(db, sessionId, text)} />
+          <TextField label="Workout name" value={session.workoutName} disabled={deleting} onCommit={(text) => renameSession(db, sessionId, text)} />
         </Notice>
       )}
 
