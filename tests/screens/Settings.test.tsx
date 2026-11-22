@@ -92,7 +92,7 @@ test("Keep what's here leaves the phone as it was", async () => {
 
 test("the home-screen note is there", async () => {
   await openSettings();
-  expect(screen.getByText("Always open Workout Tracker from the home-screen icon.")).toBeInTheDocument();
+  expect(screen.getByText("Always open Workouts from the home-screen icon.")).toBeInTheDocument();
 });
 
 test("Final: if iOS refuses to share (too long after the tap), the file downloads instead", async () => {

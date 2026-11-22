@@ -123,7 +123,7 @@ export function Settings() {
       </Notice>
 
       <Notice>
-        <p className="empty-text">Always open Workout Tracker from the home-screen icon.</p>
+        <p className="empty-text">Always open Workouts from the home-screen icon.</p>
       </Notice>
 
       <Sheet open={pending !== undefined} onClose={() => setPending(undefined)} title="Replace everything on this phone with this backup?">
@@ -212,7 +212,7 @@ function CloudBackup() {
             >
               <label className="form-field">
                 <span className="form-field__label">Email</span>
-                <input className="field" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input className="field" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
               <Button variant="outline" type="submit" loading={busy} loadingLabel="Sending…">
                 Send code

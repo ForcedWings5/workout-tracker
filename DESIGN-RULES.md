@@ -90,7 +90,7 @@ Dark-mode contrast: ink 11.0, ink-2 6.7, draft 4.2, red-ink 4.8, on-red on red-i
 
 ### Faces
 
-- **Titles:** UnifrakturCook 700 (a blackletter face, SIL Open Font License). **Screen titles only:** the workout name on Log Workout and Today, and the five screen titles. It's never used for labels, buttons, numbers, inputs, or anything under 28px. Self-hosted as `woff2` and precached by the service worker, since the app runs offline. No Google Fonts link.
+- **Titles:** UnifrakturCook 700 (a blackletter face, SIL Open Font License). **Titles only:** the workout name on Log Workout and Today, workout names on the Workouts notices (28px), sheet titles, the five screen titles, and the "Fulfilled" stamp. It's never used for labels, buttons, numbers, inputs, or anything under 28px. Self-hosted as `woff2` and precached by the service worker, since the app runs offline. No Google Fonts link.
 - **Everything else:** the system stack `-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif`.
 - **All numbers:** `font-variant-numeric: tabular-nums`, so digits line up and a changed digit doesn't shift its row.
 
@@ -99,7 +99,7 @@ Dark-mode contrast: ink 11.0, ink-2 6.7, draft 4.2, red-ink 4.8, on-red on red-i
 | Role | Size / line height | Weight | Face |
 |---|---|---|---|
 | Title | 38 / 38 px | 700 | blackletter |
-| Title, compact (Today's other contracts, sheets) | 28 / 30 px | 700 | blackletter |
+| Title, compact (workout names on Workouts, sheet titles) | 28 / 30 px | 700 | blackletter |
 | Big number (Progress headline) | 34 / 40 px | 700 | sans, tabular |
 | Set value (weight, reps, seconds) | 24 / 28 px | 600 (500 when draft) | sans, tabular |
 | Exercise name | 18 / 24 px | 650 | sans |
@@ -188,7 +188,7 @@ Text and number fields sit on notices: a `#ffffff` fill (dark mode: `--plank`), 
 
 ### Header
 
-There's no colored bar. The screen title is set directly on the board: the back link ("‹ Today") on the left and the timer on the right in `--on-board-2` 16px, then the blackletter title, then the subtitle in `--on-board-2` 15px ("Horizontal Push & Pull · 2 of 14 sets").
+There's no colored bar. The screen title is set directly on the board: the back link ("‹ Today", `--on-board` 16px 600, as a text button on the board) on the left and the timer (`--on-board-2` 16px, tabular) on the right, then the blackletter title, then the subtitle in `--on-board-2` 15px ("Horizontal Push & Pull · 2 of 14 sets").
 
 ### Tab bar
 
@@ -222,7 +222,7 @@ An empty notice that says what to do, never "Nothing here." For example: "No ses
 - **Log Workout:** see the direction contract's first viewport (`.impeccable/surfaces/src-app-tsx.md`). Confirming a set scrolls the next set into the same spot on screen.
 - **Progress:** a calendar notice (see Calendar), then a list notice of exercises, most recent first. Tapping one opens its chart notice, then past sessions as rows with weight × reps and notes.
 - **Workouts:** a "This week" notice with seven rows, Monday to Sunday, each showing the day and its workout or "Rest"; tapping a row opens a sheet to pick a workout or Rest, with a check on the current choice. Below it, a notice per workout in week order with its days ("Monday · 6 exercises", "Not scheduled"). Editing a workout opens the same notice layout as Log Workout, but showing targets instead of sets.
-- **Settings:** notices for Cloud backup (status line, "Sync now", sign in or out), Backup file (export and import), and a plain note: "Always open Workout Tracker from the home-screen icon."
+- **Settings:** notices for Cloud backup (status line, "Sync now", sign in or out), Backup file (export and import), and a plain note: "Always open Workouts from the home-screen icon."
 
 ## Motion
 
@@ -250,7 +250,7 @@ These ship with browser defaults unless they're set, so they're themed too:
 
 ## Icon and imagery
 
-- **Home-screen icon:** an original flat vector. A bone notice with two nails on the `--board` ground, stamped with a red-ink check. 1024px master, exported to the sizes iOS and the manifest need (180px `apple-touch-icon`, 192px and 512px manifest icons, plus a 512px maskable icon with the art inside the safe zone). Designed in the install/deploy slice.
+- **Home-screen icon:** an original flat vector. A torn bone contract pinned to the `--board` ground with a dagger, struck through with a red-ink check; faint plank seams on the board. Android's maskable icon is the same picture at 80% (`public/icon-maskable.svg`). 1024px master, exported to the sizes iOS and the manifest need (180px `apple-touch-icon`, 192px and 512px manifest icons, plus a 512px maskable icon with the art inside the safe zone). Designed in the install/deploy slice.
 - **Splash:** the board color with the icon centered. Nothing else.
 - **No photos, illustrations, or textures in the app.** If workout emblems come later, they're simple original geometric marks in ink, never animals, medallions, or anything resembling a franchise symbol.
 - Every shipped image records where it came from, in its file metadata or a sidecar.

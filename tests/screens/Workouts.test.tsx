@@ -212,3 +212,9 @@ test("Final #2: a typo in min on the way to the right value keeps max", async ()
   const plan = (await db.workouts.get(UPPER_A))?.exercises[0];
   expect(plan).toMatchObject({ targetMin: 6, targetMax: 10 });
 });
+
+test("design: each workout card shows a chevron, like the week rows, so it reads as tappable", async () => {
+  await openWorkouts();
+  const edit = await screen.findByRole("button", { name: "Edit Upper A" });
+  expect(edit.querySelector("svg.lucide-chevron-right")).not.toBeNull();
+});
