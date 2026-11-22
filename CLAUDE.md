@@ -37,7 +37,7 @@ The rules live in `src/logic/`: the weekly schedule (what Today shows), pre-fill
 - **Only done sets count.** Pre-filled values are suggestions until the user taps ✓. Saved sessions, pre-fill, and progress all read only `done` sets.
 - **Autosave on every change.** No save buttons. An in-progress workout must survive the phone locking, Safari reloading, or the app being closed.
 - **Pre-fill source:** the most recent finished session of the same workout that has the exercise, otherwise the most recent finished session of any workout that has it.
-- **Today follows the weekly schedule:** today's scheduled workout, plus a reminder for one missed earlier this week. A workout done any day this week counts. One-off workouts never count. See `docs/superpowers/specs/2026-11-22-weekly-schedule-design.md`.
+- **Today follows the weekly schedule:** today's scheduled workout (or a rest day) and what's next, with "Start a different workout" for anything else. A workout done any day this week counts. One-off workouts never count. See `docs/superpowers/specs/2026-11-22-weekly-schedule-design.md` and `docs/superpowers/specs/2026-11-22-simpler-today-design.md`.
 - **Offline first.** Screens read and write only local Dexie, never Supabase, and never wait on the network. Sync runs separately and fails silently, retrying on the next trigger.
 - **All writes to synced records go through the one storage helper** that sets `updatedAt` and `dirty = 1`. Never write a synced table directly.
 - **Deletes are tombstones** (`deleted = true`), so they sync. Every query filters them out.
