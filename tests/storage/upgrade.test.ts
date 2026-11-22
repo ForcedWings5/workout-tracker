@@ -51,3 +51,10 @@ test("with no rotation, every day is rest", async () => {
   expect((await db.schedule.get("schedule"))?.days).toEqual([null, null, null, null, null, null, null]);
   db.close();
 });
+
+test("Final: a damaged rotation row can't stop the app from opening; the week starts as all Rest", async () => {
+  const db = await v1({ rotation: { id: "rotation", workoutIds: "not a list", updatedAt: EPOCH, deleted: false, dirty: 0 } });
+  expect((await db.schedule.get("schedule"))?.days).toEqual([null, null, null, null, null, null, null]);
+  expect(await db.workouts.count()).toBe(4);
+  db.close();
+});

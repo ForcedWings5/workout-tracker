@@ -30,7 +30,9 @@ export class WorkoutDB extends Dexie {
         const rotation = (await tx.table("rotation").get("rotation")) as Rotation | undefined;
         const workouts = (await tx.table("workouts").toArray()) as Workout[];
         const live = workouts.filter((w) => !w.deleted).map((w) => w.id);
-        const days = rotation && !rotation.deleted ? scheduleFromRotation(rotation.workoutIds, live) : [null, null, null, null, null, null, null];
+        // A damaged rotation must never stop the app from opening: treat it as no rotation.
+        const usable = rotation && !rotation.deleted && Array.isArray(rotation.workoutIds) && rotation.workoutIds.every((id) => typeof id === "string");
+        const days = usable ? scheduleFromRotation(rotation.workoutIds, live) : [null, null, null, null, null, null, null];
         // An untouched seed rotation (or none) gives a seed-like row, so it never overwrites a real
         // schedule in the cloud. Anything the owner edited becomes a real change that will sync.
         // Written directly: save() can't run inside an upgrade, and these are the stamps it would set.

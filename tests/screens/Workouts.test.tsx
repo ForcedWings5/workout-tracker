@@ -152,6 +152,8 @@ test("delete workout asks first, then it's gone from the list", async () => {
   const user = await openEditor("Upper A");
   await user.click(screen.getByRole("button", { name: "Delete workout" }));
   const sheet = screen.getByRole("dialog", { name: "Delete this workout?" });
+  // Final: the copy says what actually happens now that there's no rotation.
+  expect(within(sheet).getByText("Upper A's days become Rest. Past sessions keep their sets.")).toBeInTheDocument();
   await user.click(within(sheet).getByRole("button", { name: "Delete workout" }));
   await screen.findByRole("heading", { level: 1, name: "Workouts" });
   await waitFor(() => expect(screen.queryByRole("button", { name: "Edit Upper A" })).not.toBeInTheDocument());
