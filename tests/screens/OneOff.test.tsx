@@ -16,7 +16,8 @@ afterEach(() => {
 test("start empty workout, name it, and add an exercise", async () => {
   const user = userEvent.setup();
   renderApp(db);
-  await user.click(await screen.findByRole("button", { name: "Start empty workout" }));
+  await user.click(await screen.findByRole("button", { name: "Start a different workout" }));
+  await user.click(within(screen.getByRole("dialog", { name: "Start a workout" })).getByRole("button", { name: "Empty workout" }));
   await screen.findByRole("heading", { level: 1, name: "Workout" });
   expect(screen.getByText(/No exercises yet/)).toBeInTheDocument();
 

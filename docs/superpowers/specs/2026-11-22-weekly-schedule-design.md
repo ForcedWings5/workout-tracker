@@ -47,6 +47,8 @@ All dates are the phone's local dates (`YYYY-MM-DD`), as everywhere else. The we
 
 ### Today
 
+> **Updated 2026-11-22:** Today was simplified to one card plus a "Start a different workout" list; the missed-day reminder and the Other workouts list are no longer shown. See `2026-11-22-simpler-today-design.md`. The rules below (including the missed list) still describe `todayPlan`.
+
 Definitions, for a given local date `today`:
 - `weekStart` = the Monday on or before `today`.
 - `scheduled(day)` = the workout set for that weekday, or Rest. A scheduled workout that has since been deleted counts as Rest.

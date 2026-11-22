@@ -1,5 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { shortDate } from "../logic/clock";
 import { splitWorkoutName } from "../logic/input";
 import { addDays, WEEKDAYS, weekdayOf, type TodayPlan } from "../logic/schedule";
@@ -54,13 +54,20 @@ export function Today({ onOpenLog }: Props) {
   const state = useLiveQuery(() => loadTodayState(db, today), [db, today]);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [starting, setStarting] = useState(false);
+  /** Set synchronously, so a fast double tap can't start two workouts before the screen re-renders. */
+  const startingNow = useRef(false);
+  const [picking, setPicking] = useState(false);
 
   const begin = async (create: () => Promise<string>) => {
-    if (starting) return;
+    if (startingNow.current) return;
+    startingNow.current = true;
     setStarting(true);
     try {
       onOpenLog(await create());
+    } catch (err) {
+      console.error("Couldn't start the workout", err);
     } finally {
+      startingNow.current = false;
       setStarting(false);
     }
   };
@@ -71,12 +78,6 @@ export function Today({ onOpenLog }: Props) {
   const { inProgress, workouts, plan, lastDateByWorkout } = state;
   const byId = new Map(workouts.map((w) => [w.id, w]));
   const todays = plan.today ? byId.get(plan.today.workoutId) : undefined;
-  const todo = plan.today?.status === "todo" ? todays : undefined;
-  // Today's own workout already has a Start button, so the reminder skips it (it can be scheduled twice a week).
-  const missed = plan.missed.find((m) => m.workoutId !== todo?.id);
-  const missedWorkout = missed ? byId.get(missed.workoutId) : undefined;
-  // Every workout without its own start button above stays one tap away.
-  const others = workouts.filter((w) => w.id !== todo?.id && w.id !== missedWorkout?.id);
   const next = nextLine(plan, today, byId);
 
   return (
@@ -127,46 +128,34 @@ export function Today({ onOpenLog }: Props) {
         </Notice>
       )}
 
-      {!inProgress && missed && missedWorkout && (
-        <Notice aria-label={`Missed ${WEEKDAYS[weekdayOf(missed.date)]}: ${titleOf(missedWorkout)}`} className="missed">
-          <p className="missed__text">
-            Missed {WEEKDAYS[weekdayOf(missed.date)]}: {titleOf(missedWorkout)}
-          </p>
-          <Button variant={todo ? "outline" : "primary"} onClick={() => start(missedWorkout.id)} disabled={starting}>
-            Do {titleOf(missedWorkout)} instead
-          </Button>
-        </Notice>
-      )}
-
-      {!inProgress && others.length > 0 && (
-        <>
-          <h2 className="board-heading">Other workouts</h2>
-          {others.map((w) => {
-            const { title, subtitle } = splitWorkoutName(w.name);
-            const last = lastDateByWorkout[w.id];
-            return (
-              <Notice key={w.id} className="notice--tap">
-                <button type="button" className="contract-tap" onClick={() => start(w.id)} disabled={starting}>
-                  <span className="contract-tap__title">{title}</span>
-                  {subtitle && <span className="contract__subtitle">{subtitle}</span>}
-                  <span className="contract__meta">
-                    {exerciseCount(w)}
-                    {last && ` · last ${shortDate(last)}`}
-                  </span>
-                </button>
-              </Notice>
-            );
-          })}
-        </>
-      )}
-
       {!inProgress && (
         <div className="board-actions board-actions--end">
-          <Button variant="board" onClick={() => begin(() => startEmptyWorkout(db))} disabled={starting}>
-            Start empty workout
+          <Button variant="text-board" onClick={() => setPicking(true)} disabled={starting}>
+            Start a different workout
           </Button>
         </div>
       )}
+
+      <Sheet open={picking} onClose={() => setPicking(false)} title="Start a workout">
+        <ul className="picker__list start-list">
+          {workouts.map((w) => {
+            const { title, subtitle } = splitWorkoutName(w.name);
+            return (
+              <li key={w.id}>
+                <button type="button" className="picker__option" disabled={starting} onClick={() => start(w.id)}>
+                  <span className="picker__name">{title}</span>
+                  {subtitle && <span className="picker__unit">{subtitle}</span>}
+                </button>
+              </li>
+            );
+          })}
+          <li>
+            <button type="button" className="picker__option" disabled={starting} onClick={() => begin(() => startEmptyWorkout(db))}>
+              <span className="picker__name">Empty workout</span>
+            </button>
+          </li>
+        </ul>
+      </Sheet>
 
       <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title="Discard this workout?">
         <p className="sheet__body">The sets you've logged in {inProgress ? splitWorkoutName(inProgress.workoutName).title : "it"} will be deleted.</p>
@@ -227,6 +216,7 @@ function TodayNotice({ workout, weekday, status, doneOn, next, lastDate, startin
           <Button variant="primary" onClick={onStart} loading={starting} loadingLabel="Starting…">
             Start workout
           </Button>
+          {next && <p className="contract__next">{next}</p>}
         </div>
       ) : (
         <div className="contract__done">

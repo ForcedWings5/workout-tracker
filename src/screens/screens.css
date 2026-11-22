@@ -670,17 +670,6 @@ button.set__n::before {
   color: var(--ink);
 }
 
-.missed {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.missed__text {
-  font-size: 17px;
-  line-height: 22px;
-  font-weight: 600;
-  color: var(--ink);
-}
 
 /* ---------- Workouts: This week ---------- */
 
@@ -886,4 +875,17 @@ button.set__n::before {
   border: 0;
   background: none;
   color: var(--on-board-2);
+}
+
+/* ---------- Today: one card ---------- */
+
+.contract__next {
+  margin-top: var(--space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
+.start-list {
+  margin-top: var(--space-3);
 }
