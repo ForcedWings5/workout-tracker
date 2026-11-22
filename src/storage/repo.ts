@@ -1,5 +1,6 @@
 // Everything the screens call. Screens never touch Dexie tables directly.
-import { isLocalDate, todayLocal } from "../logic/clock";
+import { BACKUP_VERSION, type Backup } from "../logic/backup";
+import { isLocalDate, nowIso, todayLocal } from "../logic/clock";
 import { cleanName, findExerciseByName, normalizeName } from "../logic/editing";
 import { newId } from "../logic/ids";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
@@ -433,4 +434,32 @@ export async function loadExerciseHistory(db: WorkoutDB, exerciseId: string): Pr
     .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
     .map(({ updatedAt: _, ...rest }) => rest);
   return { exercise, metric, points, sessions };
+}
+
+// ---------- Backup file ----------
+
+/** Everything, tombstones included, so a restore also restores deletions. */
+export async function exportBackup(db: WorkoutDB): Promise<Backup> {
+  const [exercises, workouts, rotation, sessions] = await Promise.all([
+    db.exercises.toArray(),
+    db.workouts.toArray(),
+    db.rotation.toArray(),
+    db.sessions.toArray(),
+  ]);
+  return { version: BACKUP_VERSION, exportedAt: nowIso(), exercises, workouts, rotation, sessions };
+}
+
+/**
+ * Replaces everything on this phone with the backup, in one transaction. Every row is stamped
+ * now and marked dirty, so the restored copy wins when it syncs.
+ */
+export async function importBackup(db: WorkoutDB, backup: Backup): Promise<void> {
+  await db.transaction("rw", [db.exercises, db.workouts, db.rotation, db.sessions], async () => {
+    await Promise.all([db.exercises.clear(), db.workouts.clear(), db.rotation.clear(), db.sessions.clear()]);
+    // Through save(), like every synced write: it stamps updatedAt and sets dirty.
+    for (const row of backup.exercises) await save(db.exercises, row);
+    for (const row of backup.workouts) await save(db.workouts, row);
+    for (const row of backup.rotation) await save(db.rotation, row);
+    for (const row of backup.sessions) await save(db.sessions, row);
+  });
 }
