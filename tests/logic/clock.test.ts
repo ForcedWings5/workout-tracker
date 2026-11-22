@@ -1,5 +1,5 @@
 // Runs with TZ=America/New_York (set in vite.config.ts).
-import { EPOCH, nowIso, shortDate, todayLocal } from "../../src/logic/clock";
+import { EPOCH, isLocalDate, nowIso, shortDate, todayLocal } from "../../src/logic/clock";
 
 test("tests run behind UTC, so the midnight case is real", () => {
   expect(new Date("2026-11-19T02:30:00Z").getTimezoneOffset()).toBe(300);
@@ -28,4 +28,13 @@ test("nowIso returns the current time as an ISO string", () => {
 test("shortDate shows month/day without leading zeros", () => {
   expect(shortDate("2026-11-12")).toBe("11/12");
   expect(shortDate("2026-01-05")).toBe("1/5");
+});
+
+test("isLocalDate accepts only real YYYY-MM-DD dates", () => {
+  expect(isLocalDate("2026-11-13")).toBe(true);
+  expect(isLocalDate("2028-02-29")).toBe(true);
+  expect(isLocalDate("2026-02-29")).toBe(false);
+  expect(isLocalDate("2026-13-40")).toBe(false);
+  expect(isLocalDate("")).toBe(false);
+  expect(isLocalDate("11/13/2026")).toBe(false);
 });

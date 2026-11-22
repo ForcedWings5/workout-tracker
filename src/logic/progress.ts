@@ -98,3 +98,31 @@ export function exercisesByRecency(exercises: Exercise[], sessions: Session[]): 
     .map((exercise) => ({ exercise, lastDate: last.get(exercise.id)! }))
     .sort((a, b) => b.lastDate.localeCompare(a.lastDate) || a.exercise.name.localeCompare(b.exercise.name));
 }
+
+/**
+ * Keys ("entryIndex:setIndex") of the done sets in `session` that are records: each beats every
+ * earlier done set of its exercise, from sessions on earlier dates and from earlier sets that day.
+ * An in-progress session counts every finished session as earlier.
+ */
+export function recordSets(session: Session, exercises: Record<string, Exercise>, sessions: Session[]): Set<string> {
+  const earlier = sessions.filter(
+    (s) => s.id !== session.id && counted(s) && (session.status === "in_progress" || s.date < session.date),
+  );
+  const records = new Set<string>();
+  const sameDay: { exerciseId: string; set: LoggedSet }[] = [];
+  session.entries.forEach((e, ei) => {
+    const exercise = exercises[e.exerciseId];
+    e.sets.forEach((set, si) => {
+      // The first session of an exercise sets the bar; nothing in it is a record (like the chart's first point).
+      if (exercise && set.done && progressSeries(exercise, earlier).points.length > 0) {
+        const before = sameDay.filter((x) => x.exerciseId === e.exerciseId).map((x) => x.set);
+        const history = before.length
+          ? [...earlier, { ...session, id: `${session.id}:before`, status: "finished" as const, entries: [{ ...e, sets: before }] }]
+          : earlier;
+        if (isRecordSet(exercise, set, history)) records.add(`${ei}:${si}`);
+        sameDay.push({ exerciseId: e.exerciseId, set });
+      }
+    });
+  });
+  return records;
+}

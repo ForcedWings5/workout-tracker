@@ -11,6 +11,8 @@ type Props = {
   measure: Measure;
   planned: Omit<PlannedExercise, "exerciseId">;
   current: boolean;
+  /** Beats every earlier done set of the exercise: shows a "Record" label. */
+  record?: boolean;
   onPatch: (patch: Partial<LoggedSet>) => void;
   onToggle: () => void;
   onSkip: () => void;
@@ -28,7 +30,7 @@ export function markStateOf(set: LoggedSet, current: boolean): MarkState {
   return current ? "current" : "suggested";
 }
 
-export function SetRow({ index, set, measure, planned, current, onPatch, onToggle, onSkip, deleting = false, exerciseName, onDelete, deleteBusy = false }: Props) {
+export function SetRow({ index, set, measure, planned, current, record = false, onPatch, onToggle, onSkip, deleting = false, exerciseName, onDelete, deleteBusy = false }: Props) {
   const n = index + 1;
   const state = markStateOf(set, current);
   const skipLabel = set.skipped
@@ -81,16 +83,19 @@ export function SetRow({ index, set, measure, planned, current, onPatch, onToggl
           placeholder="–"
           onCommit={(weight) => onPatch({ weight })}
         />
-        <NumberField
-          label={`Set ${n} ${measure === "seconds" ? "seconds" : "reps"}`}
-          value={set.amount}
-          unit={unitFor(measure)}
-          kind="amount"
-          draft={draft}
-          struck={set.skipped}
-          placeholder={target}
-          onCommit={(amount) => onPatch({ amount })}
-        />
+        <span className="set__amount">
+          <NumberField
+            label={`Set ${n} ${measure === "seconds" ? "seconds" : "reps"}`}
+            value={set.amount}
+            unit={unitFor(measure)}
+            kind="amount"
+            draft={draft}
+            struck={set.skipped}
+            placeholder={target}
+            onCommit={(amount) => onPatch({ amount })}
+          />
+          {record && set.done && <span className="set__record">Record</span>}
+        </span>
         <MarkBox state={state} label={setLabel(index, set, measure)} onToggle={onToggle} />
       </div>
       {holdBar}

@@ -34,6 +34,12 @@ export function describeSet(set: LoggedSet, measure: Measure): string {
   return set.amount !== undefined ? `${weight} × ${set.amount} ${unitFor(measure)}` : weight;
 }
 
+/** A set in a history row: "65×10", "12" (bodyweight reps), "45s", "25×30s". */
+export function shortSet(set: LoggedSet, measure: Measure): string {
+  const amount = set.amount === undefined ? "–" : `${set.amount}${measure === "seconds" ? "s" : ""}`;
+  return set.weight !== undefined && set.weight > 0 ? `${set.weight}×${amount}` : amount;
+}
+
 /** "32:14", or "1:02:03" past an hour. */
 export function formatElapsed(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));

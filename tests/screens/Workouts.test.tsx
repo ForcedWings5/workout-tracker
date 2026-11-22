@@ -89,7 +89,7 @@ test("switching an exercise to seconds changes its measure", async () => {
   const { user, bench } = await editBench();
   await user.click(within(bench).getByRole("button", { name: "Seconds" }));
   await waitFor(async () => expect((await db.exercises.get(BENCH))?.measure).toBe("seconds"));
-  expect(within(bench).getByRole("button", { name: "Seconds" })).toHaveAttribute("aria-pressed", "true");
+  await waitFor(() => expect(within(bench).getByRole("button", { name: "Seconds" })).toHaveAttribute("aria-pressed", "true"));
 });
 
 test("an exercise's fields stay folded until Edit", async () => {

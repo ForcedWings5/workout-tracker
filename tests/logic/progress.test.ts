@@ -1,4 +1,4 @@
-import { exercisesByRecency, isRecordSet, progressSeries } from "../../src/logic/progress";
+import { exercisesByRecency, isRecordSet, progressSeries, recordSets } from "../../src/logic/progress";
 import type { Exercise, LoggedSet } from "../../src/logic/types";
 import { done, entry, session } from "./fixtures";
 
@@ -99,4 +99,20 @@ test("exercises are ordered by when they were last done; never-done ones are lef
     { exercise: squat, lastDate: "2026-11-09" },
     { exercise: bench, lastDate: "2026-11-05" },
   ]);
+});
+
+test("recordSets marks each set that beats everything before it, including earlier sets that day", () => {
+  const today = session({ date: "2026-11-15", entries: [entry("bench", [done(90, 8), done(100, 5), done(105, 3), done(100, 6)])] });
+  expect([...recordSets(today, { bench }, [...benchHistory, today])]).toEqual(["0:1", "0:2"]);
+});
+
+test("recordSets for a past session only looks at sessions before its date", () => {
+  const later = session({ date: "2026-11-20", entries: [entry("bench", [done(120, 3)])] });
+  const nov12 = benchHistory[0];
+  expect([...recordSets(nov12, { bench }, [...benchHistory, later])]).toEqual(["0:3"]);
+});
+
+test("recordSets finds none in the first session of an exercise", () => {
+  const first = session({ date: "2026-11-01", entries: [entry("bench", [done(65, 10), done(85, 6)])] });
+  expect(recordSets(first, { bench }, [first]).size).toBe(0);
 });

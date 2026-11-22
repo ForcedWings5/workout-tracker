@@ -81,7 +81,7 @@ Dark-mode contrast: ink 11.0, ink-2 6.7, draft 4.2, red-ink 4.8, on-red on red-i
 ### Color jobs
 
 - **Red ink:** confirmed sets, the primary action, text buttons on a notice ("+ Set", "Edit", "Cancel"), and the date on a last note. Nothing else.
-- **Record gold:** a new personal best, until you've seen it.
+- **Record gold:** a personal best: the "Record" label on the set and its chart point.
 - **Draft:** pre-filled values, and nothing else.
 - **No per-workout colors.** A workout is identified by its name and its place in the rotation.
 - **Destructive actions aren't red.** Red already means "done." Delete and discard are plain ink text buttons inside a confirmation sheet, with a label that says exactly what happens ("Delete session").
@@ -155,7 +155,7 @@ The base container for content: `--notice` fill, 3px radius, two nails, the one 
 | **Current** (first unconfirmed set) | `--draft`, 500 weight | empty, 2px `--ink` border |
 | **Done** | `--ink`, 600 weight | filled `--red-ink`, `--on-red` check icon |
 | **Skipped** (removed this session) | `--draft`, struck through | empty, dashed border, `minus` icon |
-| **Personal best** | `--ink`, 600 weight | done, plus a "Record" label in `--record` after the reps until you've seen it |
+| **Personal best** | `--ink`, 600 weight | done, plus a "Record" label in `--record` after the reps. It shows on a set that beats your previous best for that exercise, in the session where it happened, and on its chart point |
 
 - The whole mark box is the tap target. Tapping a done mark un-confirms it.
 - Tapping a number edits it in place, with no popup. While editing: a `#ffffff` field (dark mode: `--plank`), a 2px `--ink` bottom border, and the iOS number keypad (`inputmode="decimal"` for weight, `"numeric"` for reps and seconds).

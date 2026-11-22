@@ -18,6 +18,8 @@ type Props = {
   onSkipSet: (setIndex: number) => void;
   onAddSet: () => void;
   onNote: (note: string) => void;
+  /** Whether a set is a personal best, in the session where it happened. */
+  isRecord?: (setIndex: number) => boolean;
   /** Delete mode: sets and the exercise get delete buttons, everything else is inert. */
   deleting?: boolean;
   onDeleteSet: (setIndex: number) => void;
@@ -37,6 +39,7 @@ export function ExerciseNotice({
   onSkipSet,
   onAddSet,
   onNote,
+  isRecord,
   deleting = false,
   onDeleteSet,
   onRemove,
@@ -69,6 +72,7 @@ export function ExerciseNotice({
             measure={measure}
             planned={entry.planned}
             current={currentSet === i}
+            record={isRecord?.(i) ?? false}
             onPatch={(patch) => onPatchSet(i, patch)}
             onToggle={() => onToggleSet(i)}
             onSkip={() => onSkipSet(i)}
