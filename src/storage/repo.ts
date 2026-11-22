@@ -1,7 +1,8 @@
 // Everything the screens call. Screens never touch Dexie tables directly.
-import { todayLocal } from "../logic/clock";
+import { isLocalDate, todayLocal } from "../logic/clock";
 import { cleanName, findExerciseByName, normalizeName } from "../logic/editing";
 import { newId } from "../logic/ids";
+import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
 import { nextUp } from "../logic/rotation";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
 import type { Exercise, LoggedSet, Measure, Session, Workout } from "../logic/types";
@@ -59,16 +60,27 @@ export async function startWorkout(db: WorkoutDB, workoutId: string): Promise<st
   });
 }
 
+/** Which kind of session a write is for: the live workout, or a past one opened from history. */
+export type SessionStatus = Session["status"];
+
 /**
- * Reads an in-progress session, lets `change` edit a copy, and saves it, all in one
- * transaction. Returns false to skip the write. A finished session is refused, so a
- * late tap can't rewrite history (editing past sessions gets its own path).
+ * Reads a session, lets `change` edit a copy, and saves it, all in one transaction. Returns
+ * false to skip the write. The session must be in the state the screen expects: the live
+ * screen can't write to a finished session (a late tap can't rewrite history), and a past
+ * session opened from history can't write to one still in progress.
  */
-async function mutateSession(db: WorkoutDB, sessionId: string, change: (s: Session) => boolean | void): Promise<void> {
+async function mutateSession(
+  db: WorkoutDB,
+  sessionId: string,
+  change: (s: Session) => boolean | void,
+  expected: SessionStatus = "in_progress",
+): Promise<void> {
   await db.transaction("rw", db.sessions, async () => {
     const current = await db.sessions.get(sessionId);
     if (!current || current.deleted) throw new Error("Session not found");
-    if (current.status !== "in_progress") throw new Error("This workout is already finished");
+    if (current.status !== expected) {
+      throw new Error(expected === "in_progress" ? "This workout is already finished" : "This workout is still in progress");
+    }
     const copy = structuredClone(current);
     if (change(copy) === false) return;
     await save(db.sessions, copy);
@@ -87,17 +99,18 @@ export async function updateSet(
   entryIndex: number,
   setIndex: number,
   patch: Partial<LoggedSet>,
+  status: SessionStatus = "in_progress",
 ): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
     const set = entry.sets[setIndex];
     if (!set) throw new Error("Set not found");
     entry.sets[setIndex] = { ...set, ...patch };
-  });
+  }, status);
 }
 
 /** Confirms or un-confirms a set from its stored state; a skipped set is restored and confirmed. Returns the new done value. */
-export async function toggleSetDone(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number): Promise<boolean> {
+export async function toggleSetDone(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number, status: SessionStatus = "in_progress"): Promise<boolean> {
   let done = false;
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
@@ -105,22 +118,22 @@ export async function toggleSetDone(db: WorkoutDB, sessionId: string, entryIndex
     if (!set) throw new Error("Set not found");
     done = set.skipped ? true : !set.done;
     entry.sets[setIndex] = { ...set, done, skipped: false };
-  });
+  }, status);
   return done;
 }
 
 /** Adds a set, pre-filled the same way the session's sets were. */
-export async function addSet(db: WorkoutDB, sessionId: string, entryIndex: number): Promise<void> {
+export async function addSet(db: WorkoutDB, sessionId: string, entryIndex: number, status: SessionStatus = "in_progress"): Promise<void> {
   const history = live(await db.sessions.toArray());
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
     const source = prefillSource(entry.exerciseId, s.workoutId, history);
     entry.sets.push(prefillSetAt(source, entry.sets.length));
-  });
+  }, status);
 }
 
 /** Toggles "skipped", except a blank extra set, which is removed. */
-export async function skipOrRemoveSet(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number): Promise<void> {
+export async function skipOrRemoveSet(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number, status: SessionStatus = "in_progress"): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
     const set = entry.sets[setIndex];
@@ -132,7 +145,7 @@ export async function skipOrRemoveSet(db: WorkoutDB, sessionId: string, entryInd
       const skipped = !set.skipped;
       entry.sets[setIndex] = { ...set, skipped, done: skipped ? false : set.done };
     }
-  });
+  }, status);
 }
 
 /** The entry at `entryIndex`, refused if it isn't the exercise the screen showed there. */
@@ -143,29 +156,29 @@ function expectedEntry(s: Session, entryIndex: number, exerciseId: string) {
 }
 
 /** Deletes one set from today's session, done or not. The workout is never touched. */
-export async function deleteSessionSet(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number, exerciseId: string): Promise<void> {
+export async function deleteSessionSet(db: WorkoutDB, sessionId: string, entryIndex: number, setIndex: number, exerciseId: string, status: SessionStatus = "in_progress"): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     const entry = expectedEntry(s, entryIndex, exerciseId);
     if (!entry.sets[setIndex]) throw new Error("Set not found");
     entry.sets.splice(setIndex, 1);
-  });
+  }, status);
 }
 
 /** Removes an exercise and its sets from today's session only. */
-export async function removeSessionEntry(db: WorkoutDB, sessionId: string, entryIndex: number, exerciseId: string): Promise<void> {
+export async function removeSessionEntry(db: WorkoutDB, sessionId: string, entryIndex: number, exerciseId: string, status: SessionStatus = "in_progress"): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     expectedEntry(s, entryIndex, exerciseId);
     s.entries.splice(entryIndex, 1);
-  });
+  }, status);
 }
 
-export async function setNote(db: WorkoutDB, sessionId: string, entryIndex: number, note: string): Promise<void> {
+export async function setNote(db: WorkoutDB, sessionId: string, entryIndex: number, note: string, status: SessionStatus = "in_progress"): Promise<void> {
   await mutateSession(db, sessionId, (s) => {
     const entry = entryAt(s, entryIndex);
     const trimmed = note.trim();
     if (trimmed) entry.note = note;
     else delete entry.note;
-  });
+  }, status);
 }
 
 /** "empty" means no set was done; nothing is written, so the user can choose to discard. */
@@ -184,11 +197,26 @@ export async function discardWorkout(db: WorkoutDB, sessionId: string): Promise<
   await remove(db.sessions, sessionId);
 }
 
+/** Moves a past session to another day. Refuses anything that isn't a real YYYY-MM-DD date. */
+export async function setSessionDate(db: WorkoutDB, sessionId: string, date: string): Promise<void> {
+  if (!isLocalDate(date)) throw new Error("Pick a date");
+  // A future date would make this the newest session for good: next up, pre-fill and notes would follow it.
+  if (date > todayLocal()) throw new Error("Pick today or an earlier day");
+  await mutateSession(db, sessionId, (s) => void (s.date = date), "finished");
+}
+
+/** Deletes a past session. A tombstone, so the delete syncs. */
+export async function deleteSession(db: WorkoutDB, sessionId: string): Promise<void> {
+  await remove(db.sessions, sessionId);
+}
+
 export type LogState = {
   session?: Session;
   exercises: Record<string, Exercise>;
   /** exerciseId → its most recent note from a finished session. */
   lastNotes: Record<string, { date: string; note: string }>;
+  /** Every session that isn't deleted, for working out records. */
+  sessions: Session[];
 };
 
 export async function loadLogState(db: WorkoutDB, sessionId: string): Promise<LogState> {
@@ -204,7 +232,7 @@ export async function loadLogState(db: WorkoutDB, sessionId: string): Promise<Lo
     if (note) lastNotes[e.exerciseId] = note;
   }
   // Archived and deleted exercises stay visible here: a session may still reference them.
-  return { session, exercises: Object.fromEntries(exercises.map((x) => [x.id, x])), lastNotes };
+  return { session, exercises: Object.fromEntries(exercises.map((x) => [x.id, x])), lastNotes, sessions };
 }
 
 // ---------- Editing workouts, the rotation and exercises ----------
@@ -345,20 +373,20 @@ export async function startEmptyWorkout(db: WorkoutDB): Promise<string> {
 }
 
 /** Adds an exercise to this session only, with one set pre-filled from last time. */
-export async function addExerciseToSession(db: WorkoutDB, sessionId: string, exerciseId: string): Promise<void> {
+export async function addExerciseToSession(db: WorkoutDB, sessionId: string, exerciseId: string, status: SessionStatus = "in_progress"): Promise<void> {
   const history = live(await db.sessions.toArray());
   await mutateSession(db, sessionId, (s) => {
     const source = prefillSource(exerciseId, s.workoutId, history);
     s.entries.push({ exerciseId, planned: { sets: 1, targetMin: 0 }, sets: [prefillSetAt(source, 0)] });
-  });
+  }, status);
 }
 
-export async function renameSession(db: WorkoutDB, sessionId: string, name: string): Promise<void> {
+export async function renameSession(db: WorkoutDB, sessionId: string, name: string, status: SessionStatus = "in_progress"): Promise<void> {
   const clean = cleanName(name);
   if (!clean) throw new Error("Give the workout a name");
   await mutateSession(db, sessionId, (s) => {
     s.workoutName = clean;
-  });
+  }, status);
 }
 
 /** Exercises the picker offers: not deleted, not archived, by name. */
@@ -366,4 +394,43 @@ export async function loadExercises(db: WorkoutDB): Promise<Exercise[]> {
   return live(await db.exercises.toArray())
     .filter((e) => !e.archived)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ---------- Progress ----------
+
+/** Exercises with finished sets, most recently done first. */
+export async function loadProgressList(db: WorkoutDB): Promise<{ exercise: Exercise; lastDate: string }[]> {
+  const [exercises, sessions] = await Promise.all([db.exercises.toArray(), db.sessions.toArray()]);
+  return exercisesByRecency(live(exercises), live(sessions));
+}
+
+export type ExerciseHistoryState = {
+  exercise?: Exercise;
+  metric: ProgressMetric;
+  points: ProgressPoint[];
+  /** Finished sessions with done sets of this exercise, newest first. */
+  sessions: { id: string; date: string; sets: LoggedSet[]; note?: string }[];
+};
+
+export async function loadExerciseHistory(db: WorkoutDB, exerciseId: string): Promise<ExerciseHistoryState> {
+  const [found, all] = await Promise.all([db.exercises.get(exerciseId), db.sessions.toArray()]);
+  const exercise = found && !found.deleted ? found : undefined;
+  if (!exercise) return { metric: "reps", points: [], sessions: [] };
+  const finished = live(all).filter((s) => s.status === "finished");
+  const { metric, points } = progressSeries(exercise, finished);
+  const sessions = finished
+    .map((s) => {
+      const entries = s.entries.filter((e) => e.exerciseId === exerciseId);
+      return {
+        id: s.id,
+        date: s.date,
+        updatedAt: s.updatedAt,
+        sets: entries.flatMap((e) => e.sets.filter((set) => set.done)),
+        note: entries.find((e) => e.note?.trim())?.note,
+      };
+    })
+    .filter((s) => s.sets.length > 0)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
+    .map(({ updatedAt: _, ...rest }) => rest);
+  return { exercise, metric, points, sessions };
 }

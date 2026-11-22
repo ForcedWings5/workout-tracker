@@ -482,3 +482,144 @@ button.set__n::before {
 .exercise__head--deleting .delete-btn {
   margin-block: -10px;
 }
+
+/* ---------- Personal best ---------- */
+
+.set__amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.set__record {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--record);
+}
+
+/* ---------- Progress ---------- */
+
+.progress-list,
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.progress-list li + li,
+.history-list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.progress-row,
+.history-row {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  touch-action: manipulation;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+}
+
+.progress-row__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.progress-row__last,
+.history-row__note {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
+.progress-row__last {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-row__chevron {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.history-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2) 0;
+}
+
+.history-row__sets {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-row:active,
+.history-row:active {
+  filter: brightness(0.92);
+}
+
+.chart-title {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: var(--space-2);
+  overflow: visible;
+}
+
+.chart__grid {
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+
+.chart__label {
+  font-size: 13px;
+  fill: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.chart__point {
+  fill: var(--red-ink);
+}
+
+.chart__point--record {
+  fill: var(--record);
+}
+
+.chart__record {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--record);
+}

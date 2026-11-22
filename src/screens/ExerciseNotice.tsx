@@ -18,12 +18,16 @@ type Props = {
   onSkipSet: (setIndex: number) => void;
   onAddSet: () => void;
   onNote: (note: string) => void;
+  /** Whether a set is a personal best, in the session where it happened. */
+  isRecord?: (setIndex: number) => boolean;
   /** Delete mode: sets and the exercise get delete buttons, everything else is inert. */
   deleting?: boolean;
   onDeleteSet: (setIndex: number) => void;
   onRemove: () => void;
   /** A delete is still saving. */
   deleteBusy?: boolean;
+  /** Where a removed exercise comes out of: "today", or "this session" for a past one. */
+  scope?: string;
 };
 
 export function ExerciseNotice({
@@ -37,10 +41,12 @@ export function ExerciseNotice({
   onSkipSet,
   onAddSet,
   onNote,
+  isRecord,
   deleting = false,
   onDeleteSet,
   onRemove,
   deleteBusy = false,
+  scope = "today",
 }: Props) {
   return (
     <Notice aria-label={name} className="exercise">
@@ -48,7 +54,7 @@ export function ExerciseNotice({
         <h2 className="exercise__name">{name}</h2>
         <span className="exercise__target">{formatTarget(entry.planned, measure)}</span>
         {deleting && (
-          <button type="button" className="btn btn--plain delete-btn" aria-label={`Remove ${name} from today`} disabled={deleteBusy} onClick={onRemove}>
+          <button type="button" className="btn btn--plain delete-btn" aria-label={`Remove ${name} from ${scope}`} disabled={deleteBusy} onClick={onRemove}>
             <CircleMinus size={24} strokeWidth={2} aria-hidden="true" />
           </button>
         )}
@@ -69,6 +75,7 @@ export function ExerciseNotice({
             measure={measure}
             planned={entry.planned}
             current={currentSet === i}
+            record={isRecord?.(i) ?? false}
             onPatch={(patch) => onPatchSet(i, patch)}
             onToggle={() => onToggleSet(i)}
             onSkip={() => onSkipSet(i)}

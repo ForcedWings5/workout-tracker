@@ -1,4 +1,4 @@
-import { describeSet, formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
+import { describeSet, shortSet, formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
 
 test("formatTarget", () => {
   expect(formatTarget({ sets: 4, targetMin: 6, targetMax: 10 }, "reps")).toBe("4 × 6–10");
@@ -43,4 +43,12 @@ test("describeSet reads like the row", () => {
   expect(describeSet({ weight: 20, amount: 45, done: false }, "seconds")).toBe("20 lb × 45 sec");
   expect(describeSet({ weight: 135, done: false }, "reps")).toBe("135 lb");
   expect(describeSet({ done: false }, "reps")).toBe("Bodyweight");
+});
+
+test("shortSet is the compact form for history rows", () => {
+  expect(shortSet({ weight: 65, amount: 10, done: true }, "reps")).toBe("65×10");
+  expect(shortSet({ amount: 12, done: true }, "reps")).toBe("12");
+  expect(shortSet({ amount: 45, done: true }, "seconds")).toBe("45s");
+  expect(shortSet({ weight: 25, amount: 30, done: true }, "seconds")).toBe("25×30s");
+  expect(shortSet({ weight: 135, done: true }, "reps")).toBe("135×–");
 });

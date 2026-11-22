@@ -18,3 +18,12 @@ export function shortDate(date: string): string {
   const [, m, d] = date.split("-");
   return `${Number(m)}/${Number(d)}`;
 }
+
+/** A real calendar date written as local YYYY-MM-DD. */
+export function isLocalDate(text: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return false;
+  const [y, m, d] = match.slice(1).map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
