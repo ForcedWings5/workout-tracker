@@ -623,3 +623,36 @@ button.set__n::before {
   font-weight: 600;
   fill: var(--record);
 }
+
+/* ---------- Settings ---------- */
+
+.settings__title {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 650;
+}
+
+.settings__status {
+  margin-top: var(--space-1);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings__actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.settings__message:empty {
+  display: none;
+}
+
+.settings__message {
+  margin-top: var(--space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+}

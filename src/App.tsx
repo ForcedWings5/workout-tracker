@@ -3,10 +3,9 @@ import { EditWorkout } from "./screens/EditWorkout";
 import { ExerciseHistory } from "./screens/ExerciseHistory";
 import { LogWorkout } from "./screens/LogWorkout";
 import { Progress } from "./screens/Progress";
+import { Settings } from "./screens/Settings";
 import { Today } from "./screens/Today";
 import { Workouts } from "./screens/Workouts";
-import { Notice } from "./ui/Notice";
-import { ScreenHeader } from "./ui/ScreenHeader";
 import { TabBar, type Tab } from "./ui/TabBar";
 
 type Overlay =
@@ -15,10 +14,6 @@ type Overlay =
   | { kind: "exercise"; exerciseId: string }
   | { kind: "pastSession"; sessionId: string; exerciseId: string; exerciseName: string };
 type View = { tab: Tab; overlay?: Overlay };
-
-const COMING: Record<"settings", { title: string; text: string }> = {
-  settings: { title: "Settings", text: "Backups arrive in a later update. Always open Workout Tracker from the home-screen icon." },
-};
 
 export default function App() {
   const [view, setView] = useState<View>({ tab: "today" });
@@ -86,12 +81,7 @@ export default function App() {
         ) : view.tab === "workouts" ? (
           <Workouts onEdit={(workoutId) => setView({ tab: "workouts", overlay: { kind: "editWorkout", workoutId } })} />
         ) : (
-          <>
-            <ScreenHeader title={COMING[view.tab].title} />
-            <Notice>
-              <p className="empty-text">{COMING[view.tab].text}</p>
-            </Notice>
-          </>
+          <Settings />
         )}
         <div className="tabbar-spacer" />
       </main>

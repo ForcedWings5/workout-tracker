@@ -6,7 +6,7 @@ import { newId } from "../logic/ids";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
 import { nextUp } from "../logic/rotation";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
-import type { Exercise, LoggedSet, Measure, Session, Workout } from "../logic/types";
+import type { Exercise, LoggedSet, Measure, Session, SyncState, Workout } from "../logic/types";
 import type { WorkoutDB } from "./db";
 import { live, remove, save } from "./write";
 
@@ -461,5 +461,18 @@ export async function importBackup(db: WorkoutDB, backup: Backup): Promise<void>
     for (const row of backup.workouts) await save(db.workouts, row);
     for (const row of backup.rotation) await save(db.rotation, row);
     for (const row of backup.sessions) await save(db.sessions, row);
+  });
+}
+
+/** Local-only status: last export, and later sync times. Never synced. */
+export async function loadSyncState(db: WorkoutDB): Promise<SyncState> {
+  return (await db.syncState.get("state")) ?? {};
+}
+
+/** Remembers when a backup file was last exported. */
+export async function markExported(db: WorkoutDB): Promise<void> {
+  await db.transaction("rw", db.syncState, async () => {
+    const current = (await db.syncState.get("state")) ?? { id: "state" as const };
+    await db.syncState.put({ ...current, id: "state", lastExportAt: nowIso() });
   });
 }
