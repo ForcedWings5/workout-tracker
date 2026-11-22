@@ -80,7 +80,7 @@ Dark-mode contrast: ink 11.0, ink-2 6.7, draft 4.2, red-ink 4.8, on-red on red-i
 
 ### Color jobs
 
-- **Red ink:** confirmed sets, the primary action, text buttons on a notice ("+ Set", "Edit", "Cancel"), and the date on a last note. Nothing else.
+- **Red ink:** confirmed sets, the primary action, text buttons on a notice ("+ Set", "Edit", "Cancel"), the date on a last note, a day with a finished workout on the calendar, and chart points. Nothing else.
 - **Record gold:** a personal best: the "Record" label on the set and its chart point.
 - **Draft:** pre-filled values, and nothing else.
 - **No per-workout colors.** A workout is identified by its name and the days it's scheduled on.
@@ -196,7 +196,7 @@ A `--plank` fill, 49px tall plus the bottom safe area, with four tabs: Today, Pr
 
 ### Sheets
 
-Bottom sheets (confirmations, picking an exercise) slide up as a notice with 12px top corners over a `rgba(0,0,0,0.5)` scrim. Use a sheet only when the action needs a confirmation (discard, delete, import). Everything else happens inline.
+Bottom sheets slide up as a notice with 12px top corners over a `rgba(0,0,0,0.5)` scrim. Use a sheet for two jobs only: confirming something that can't be undone (discard, delete, import) and picking from a list (an exercise, a workout to start, a day's workout). Everything else happens inline.
 
 ### Calendar
 
@@ -270,7 +270,7 @@ These ship with browser defaults unless they're set, so they're themed too:
 - Wood grain, parchment, paper texture, burnt edges, stains, or any other texture image
 - Gradients, glass, blur, glows, or hard offset shadows
 - ✕ or a strikethrough for a *done* set (strikethrough means skipped)
-- Red on anything that isn't a confirmed set, the primary action, a text button on a notice, or a last-note date
+- Red on anything that isn't a confirmed set, the primary action, a text button on a notice, a last-note date, a calendar workout day, or a chart point
 - Typed glyphs or emoji as icons
 - Uppercase letter-spaced eyebrow labels above headings
 - Nested notices, or cards inside notices
