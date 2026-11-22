@@ -32,6 +32,7 @@ import { Sheet } from "../ui/Sheet";
 import { TextField } from "../ui/TextField";
 import { ExerciseNotice } from "./ExerciseNotice";
 import { ExercisePicker } from "./ExercisePicker";
+import { requestSync } from "../sync/start";
 
 type Props = {
   sessionId: string;
@@ -161,6 +162,7 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
       else {
         forgetTimer(sessionId);
         setFulfilled(true);
+        void requestSync(); // back it up right away when signed in; never waited on
       }
     } finally {
       setFinishing(false);

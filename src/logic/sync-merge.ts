@@ -2,6 +2,9 @@
 import type { Kind, SyncMeta } from "./types";
 import type { RemoteRow } from "../sync/remote";
 
+/** Dev-only demo history: never pushed, never counted as waiting. */
+export const isDemoId = (id: string) => id.startsWith("demo-");
+
 /**
  * Whether a pulled row should replace the local copy: when there's none, or when the local copy
  * is clean and older. A dirty local row always wins; it's pushed next. Times compare as instants,

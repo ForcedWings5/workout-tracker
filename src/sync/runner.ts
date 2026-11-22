@@ -1,7 +1,7 @@
 // One sync: pull, then push. Talks to Dexie and the cloud; screens never wait on it.
 import type { Table } from "dexie";
 import { nowIso } from "../logic/clock";
-import { fromRemoteRow, newestSyncedAt, shouldApplyRemote, toRemoteRow } from "../logic/sync-merge";
+import { fromRemoteRow, isDemoId, newestSyncedAt, shouldApplyRemote, toRemoteRow } from "../logic/sync-merge";
 import type { Kind, SyncMeta } from "../logic/types";
 import type { WorkoutDB } from "../storage/db";
 import type { RemoteStore } from "./remote";
@@ -18,8 +18,6 @@ function tables(db: WorkoutDB): Record<SyncedKind, Table<SyncMeta, string>> {
   };
 }
 
-/** Dev-only demo history must never reach the cloud. */
-const isDemo = (id: string) => id.startsWith("demo-");
 
 export async function syncOnce(db: WorkoutDB, remote: RemoteStore): Promise<{ pulled: number; pushed: number }> {
   const byKind = tables(db);
@@ -46,7 +44,7 @@ export async function syncOnce(db: WorkoutDB, remote: RemoteStore): Promise<{ pu
   // Push: every dirty row, then clear dirty only where nothing changed meanwhile.
   const pending: { kind: SyncedKind; record: SyncMeta }[] = [];
   for (const [kind, table] of Object.entries(byKind) as [SyncedKind, Table<SyncMeta, string>][]) {
-    for (const record of await table.where("dirty").equals(1).toArray()) if (!isDemo(record.id)) pending.push({ kind, record });
+    for (const record of await table.where("dirty").equals(1).toArray()) if (!isDemoId(record.id)) pending.push({ kind, record });
   }
   if (pending.length) await remote.push(pending.map(({ kind, record }) => toRemoteRow(kind, record)));
   await db.transaction("rw", all, async () => {
