@@ -13,7 +13,8 @@ import {
   loadTodayState,
   renameExercise,
   saveWorkout,
-  setRotation,
+  loadSchedule,
+  setScheduleDay,
   startWorkout,
   updateSet,
 } from "../../src/storage/repo";
@@ -36,9 +37,7 @@ async function workout(id: string) {
   return w;
 }
 
-async function rotationIds() {
-  return (await db.rotation.get("rotation"))!.workoutIds;
-}
+const SEED_WEEK = [UPPER_A, LOWER_A, null, "seed-workout-upper-b", "seed-workout-lower-b", null, null];
 
 test("Review Focus 5: a duplicate name reuses the existing exercise", async () => {
   const first = await getOrCreateExercise(db, "Bench Press", "reps");
@@ -76,28 +75,29 @@ test("saveWorkout marks the workout dirty", async () => {
   expect(await workout(UPPER_A)).toMatchObject({ name: "Upper A: Push", dirty: 1 });
 });
 
-test("createWorkout adds an empty workout to the end of the rotation", async () => {
+test("createWorkout adds an empty workout that isn't scheduled", async () => {
   const id = await createWorkout(db, "Arms");
   expect(await workout(id)).toMatchObject({ name: "Arms", exercises: [], deleted: false, dirty: 1 });
-  expect((await rotationIds()).at(-1)).toBe(id);
+  expect(await loadSchedule(db)).toEqual(SEED_WEEK);
 });
 
-test("deleteWorkout tombstones it, takes it out of the rotation, and keeps past sessions' names", async () => {
+test("deleteWorkout tombstones it, makes its days Rest, and keeps past sessions' names", async () => {
   const sessionId = await startWorkout(db, UPPER_A);
   await updateSet(db, sessionId, 0, 0, { weight: 65, amount: 10, done: true });
   await finishWorkout(db, sessionId);
   await deleteWorkout(db, UPPER_A);
   expect(await workout(UPPER_A)).toMatchObject({ deleted: true, dirty: 1 });
-  expect(await rotationIds()).not.toContain(UPPER_A);
+  expect((await loadSchedule(db))[0]).toBeNull();
+  expect((await db.schedule.get("schedule"))?.dirty).toBe(1);
   expect((await db.sessions.get(sessionId))?.workoutName).toBe("Upper A: Horizontal Push & Pull");
-  expect((await loadTodayState(db)).workouts.map((w) => w.id)).not.toContain(UPPER_A);
+  expect((await loadTodayState(db, "2026-11-16")).workouts.map((w) => w.id)).not.toContain(UPPER_A);
 });
 
-test("setRotation stores the new order", async () => {
-  await setRotation(db, [LOWER_A, UPPER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
-  expect(await rotationIds()).toEqual([LOWER_A, UPPER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
-  expect((await db.rotation.get("rotation"))?.dirty).toBe(1);
-  expect((await loadTodayState(db)).nextUpId).toBe(LOWER_A);
+test("setScheduleDay saves one day of the week", async () => {
+  await setScheduleDay(db, 0, LOWER_A);
+  expect((await loadSchedule(db))[0]).toBe(LOWER_A);
+  expect((await db.schedule.get("schedule"))?.dirty).toBe(1);
+  expect((await loadTodayState(db, "2026-11-16")).plan.today?.workoutId).toBe(LOWER_A);
 });
 
 test("renameExercise renames it everywhere, history included", async () => {
@@ -153,11 +153,13 @@ test("setExerciseMeasure changes the exercise everywhere", async () => {
   expect(await db.exercises.get(BENCH)).toMatchObject({ measure: "seconds", dirty: 1 });
 });
 
-test("loadWorkoutList gives workouts in rotation order with the rotation ids", async () => {
-  await setRotation(db, [LOWER_A, UPPER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
+test("loadWorkoutList orders workouts by the week, then unscheduled ones by name", async () => {
+  await setScheduleDay(db, 0, LOWER_A);
+  await setScheduleDay(db, 1, UPPER_A);
+  const arms = await createWorkout(db, "Arms");
   const list = await loadWorkoutList(db);
-  expect(list.rotationIds[0]).toBe(LOWER_A);
-  expect(list.workouts.map((w) => w.id).slice(0, 2)).toEqual([LOWER_A, UPPER_A]);
+  expect(list.days[0]).toBe(LOWER_A);
+  expect(list.workouts.map((w) => w.id)).toEqual([LOWER_A, UPPER_A, "seed-workout-upper-b", "seed-workout-lower-b", arms]);
 });
 
 test("loadEditWorkout returns the workout and its exercises", async () => {

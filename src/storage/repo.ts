@@ -4,37 +4,55 @@ import { isLocalDate, nowIso, todayLocal } from "../logic/clock";
 import { cleanName, findExerciseByName, normalizeName } from "../logic/editing";
 import { newId } from "../logic/ids";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
-import { nextUp } from "../logic/rotation";
+import { todayPlan, type TodayPlan } from "../logic/schedule";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
-import type { Exercise, LoggedSet, Measure, Session, SyncMeta, SyncState, Workout } from "../logic/types";
+import type { Exercise, LoggedSet, Measure, Schedule, Session, SyncMeta, SyncState, Workout } from "../logic/types";
 import type { Table } from "dexie";
 import type { WorkoutDB } from "./db";
 import { live, remove, save } from "./write";
 
 export type TodayState = {
-  nextUpId?: string;
-  /** Rotation order first, then any workouts not in the rotation. */
+  /** What Today shows for this date: today's workout or rest, what's next, and what was missed. */
+  plan: TodayPlan;
+  /** In the order they first appear in the week, then unscheduled ones by name. */
   workouts: Workout[];
   inProgress?: Session;
   /** workoutId → date of its latest finished session. */
   lastDateByWorkout: Record<string, string>;
 };
 
-async function rotationIds(db: WorkoutDB): Promise<string[]> {
-  const rotation = await db.rotation.get("rotation");
-  return rotation && !rotation.deleted ? rotation.workoutIds : [];
+const REST_WEEK: (string | null)[] = [null, null, null, null, null, null, null];
+
+/** The week, Monday first: a workout id or null for Rest. All rest if it was never set. */
+export async function loadSchedule(db: WorkoutDB): Promise<(string | null)[]> {
+  const row = await db.schedule.get("schedule");
+  return row && !row.deleted ? row.days : [...REST_WEEK];
 }
 
-export async function loadTodayState(db: WorkoutDB): Promise<TodayState> {
-  const [ids, allWorkouts, sessions] = await Promise.all([
-    rotationIds(db),
+/** Sets one weekday (Monday is 0) to a workout, or to Rest with null. */
+export async function setScheduleDay(db: WorkoutDB, weekday: number, workoutId: string | null): Promise<void> {
+  await db.transaction("rw", db.schedule, async () => {
+    const days = [...(await loadSchedule(db))];
+    days[weekday] = workoutId;
+    await save<Schedule>(db.schedule, { id: "schedule", days });
+  });
+}
+
+/** Live workouts in the order they first appear in the week, then the unscheduled ones by name. */
+function inWeekOrder(workouts: Workout[], days: (string | null)[]): Workout[] {
+  const byId = new Map(workouts.map((w) => [w.id, w]));
+  const scheduled = [...new Set(days.filter((id): id is string => id !== null && byId.has(id)))];
+  const rest = workouts.filter((w) => !scheduled.includes(w.id)).sort((a, b) => a.name.localeCompare(b.name));
+  return [...scheduled.map((id) => byId.get(id)!), ...rest];
+}
+
+export async function loadTodayState(db: WorkoutDB, today: string = todayLocal()): Promise<TodayState> {
+  const [days, allWorkouts, sessions] = await Promise.all([
+    loadSchedule(db),
     db.workouts.toArray().then(live),
     db.sessions.toArray().then(live),
   ]);
-  const byId = new Map(allWorkouts.map((w) => [w.id, w]));
-  const inRotation = ids.filter((id) => byId.has(id));
-  const rest = allWorkouts.filter((w) => !inRotation.includes(w.id)).sort((a, b) => a.name.localeCompare(b.name));
-  const workouts = [...inRotation.map((id) => byId.get(id)!), ...rest];
+  const workouts = inWeekOrder(allWorkouts, days);
 
   const lastDateByWorkout: Record<string, string> = {};
   for (const s of sessions) {
@@ -44,7 +62,7 @@ export async function loadTodayState(db: WorkoutDB): Promise<TodayState> {
   }
 
   return {
-    nextUpId: nextUp(inRotation, sessions),
+    plan: todayPlan(days, allWorkouts.map((w) => w.id), sessions, today),
     workouts,
     inProgress: sessions.find((s) => s.status === "in_progress"),
     lastDateByWorkout,
@@ -237,7 +255,7 @@ export async function loadLogState(db: WorkoutDB, sessionId: string): Promise<Lo
   return { session, exercises: Object.fromEntries(exercises.map((x) => [x.id, x])), lastNotes, sessions };
 }
 
-// ---------- Editing workouts, the rotation and exercises ----------
+// ---------- Editing workouts, the week and exercises ----------
 
 /**
  * The exercise with this name (ignoring case and extra spaces), or a new one.
@@ -258,27 +276,20 @@ export async function saveWorkout(db: WorkoutDB, workout: Omit<Workout, "updated
   await save(db.workouts, { ...workout, deleted: false });
 }
 
-/** A new, empty workout at the end of the rotation. */
+/** A new, empty workout. It isn't scheduled until a day is set to it. */
 export async function createWorkout(db: WorkoutDB, name: string): Promise<string> {
-  return db.transaction("rw", db.workouts, db.rotation, async () => {
-    const id = newId();
-    await save(db.workouts, { id, name: cleanName(name) || "New workout", exercises: [] });
-    await setRotation(db, [...(await rotationIds(db)), id]);
-    return id;
-  });
+  const id = newId();
+  await save(db.workouts, { id, name: cleanName(name) || "New workout", exercises: [] });
+  return id;
 }
 
-/** Tombstones the workout and takes it out of the rotation. Past sessions keep its name. */
+/** Tombstones the workout and makes its days Rest. Past sessions keep its name. */
 export async function deleteWorkout(db: WorkoutDB, id: string): Promise<void> {
-  await db.transaction("rw", db.workouts, db.rotation, async () => {
+  await db.transaction("rw", db.workouts, db.schedule, async () => {
     await remove(db.workouts, id);
-    const ids = await rotationIds(db);
-    if (ids.includes(id)) await setRotation(db, ids.filter((x) => x !== id));
+    const days = await loadSchedule(db);
+    if (days.includes(id)) await save<Schedule>(db.schedule, { id: "schedule", days: days.map((d) => (d === id ? null : d)) });
   });
-}
-
-export async function setRotation(db: WorkoutDB, workoutIds: string[]): Promise<void> {
-  await save(db.rotation, { id: "rotation", workoutIds });
 }
 
 /** Renames an exercise everywhere: sessions store its id, so history follows. */
@@ -338,12 +349,12 @@ export async function setExerciseMeasure(db: WorkoutDB, id: string, measure: Mea
   });
 }
 
-export type WorkoutList = { workouts: Workout[]; rotationIds: string[] };
+export type WorkoutList = { workouts: Workout[]; days: (string | null)[] };
 
-/** Workouts in rotation order, then any outside it. */
+/** Workouts in week order, then unscheduled ones by name, with the week itself. */
 export async function loadWorkoutList(db: WorkoutDB): Promise<WorkoutList> {
-  const [{ workouts }, ids] = await Promise.all([loadTodayState(db), rotationIds(db)]);
-  return { workouts, rotationIds: ids.filter((id) => workouts.some((w) => w.id === id)) };
+  const [days, workouts] = await Promise.all([loadSchedule(db), db.workouts.toArray().then(live)]);
+  return { workouts: inWeekOrder(workouts, days), days };
 }
 
 export type EditWorkoutState = { workout?: Workout; exercises: Record<string, Exercise> };
@@ -441,13 +452,13 @@ export async function loadExerciseHistory(db: WorkoutDB, exerciseId: string): Pr
 
 /** Everything, tombstones included, so a restore also restores deletions. */
 export async function exportBackup(db: WorkoutDB): Promise<Backup> {
-  const [exercises, workouts, rotation, sessions] = await Promise.all([
+  const [exercises, workouts, schedule, sessions] = await Promise.all([
     db.exercises.toArray(),
     db.workouts.toArray(),
-    db.rotation.toArray(),
+    db.schedule.toArray(),
     db.sessions.toArray(),
   ]);
-  return { version: BACKUP_VERSION, exportedAt: nowIso(), exercises, workouts, rotation, sessions };
+  return { version: BACKUP_VERSION, exportedAt: nowIso(), exercises, workouts, schedule, sessions };
 }
 
 /**
@@ -456,19 +467,19 @@ export async function exportBackup(db: WorkoutDB): Promise<Backup> {
  * become tombstones rather than vanishing, so the replace reaches the cloud copy too.
  */
 export async function importBackup(db: WorkoutDB, backup: Backup): Promise<void> {
-  await db.transaction("rw", [db.exercises, db.workouts, db.rotation, db.sessions], async () => {
+  await db.transaction("rw", [db.exercises, db.workouts, db.schedule, db.sessions], async () => {
     const tombstone = async <T extends SyncMeta>(table: Table<T, string>, keep: { id: string }[]) => {
       const ids = new Set(keep.map((r) => r.id));
       for (const row of await table.toArray()) if (!ids.has(row.id) && !row.deleted) await save(table, { ...row, deleted: true });
     };
     await tombstone(db.exercises, backup.exercises);
     await tombstone(db.workouts, backup.workouts);
-    await tombstone(db.rotation, backup.rotation);
+    await tombstone(db.schedule, backup.schedule);
     await tombstone(db.sessions, backup.sessions);
     // Through save(), like every synced write: it stamps updatedAt and sets dirty.
     for (const row of backup.exercises) await save(db.exercises, row);
     for (const row of backup.workouts) await save(db.workouts, row);
-    for (const row of backup.rotation) await save(db.rotation, row);
+    for (const row of backup.schedule) await save(db.schedule, row);
     for (const row of backup.sessions) await save(db.sessions, row);
   });
 }

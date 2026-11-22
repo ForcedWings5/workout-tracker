@@ -33,11 +33,11 @@ const strip = (rows: SyncMeta[]) =>
 test("a round trip keeps every row, tombstones included", async () => {
   const { gone } = await history();
   const backup = await exportBackup(db);
-  expect(backup.version).toBe(1);
+  expect(backup.version).toBe(2);
   expect(backup.sessions.find((s) => s.id === gone)?.deleted).toBe(true);
   await seedIfEmpty(other);
   await importBackup(other, JSON.parse(JSON.stringify(backup)));
-  for (const table of ["exercises", "workouts", "rotation", "sessions"] as const) {
+  for (const table of ["exercises", "workouts", "schedule", "sessions"] as const) {
     expect(strip(await other[table].toArray())).toEqual(strip(await db[table].toArray()));
   }
 });
@@ -58,7 +58,7 @@ test("import marks every row dirty with a fresh updatedAt", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
   await importBackup(other, backup);
-  for (const table of ["exercises", "workouts", "rotation", "sessions"] as const) {
+  for (const table of ["exercises", "workouts", "schedule", "sessions"] as const) {
     const rows = await other[table].toArray();
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every((r) => r.dirty === 1 && r.updatedAt === "2030-01-01T00:00:00.000Z")).toBe(true);

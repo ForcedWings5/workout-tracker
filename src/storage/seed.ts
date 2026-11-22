@@ -1,5 +1,5 @@
 import { EPOCH } from "../logic/clock";
-import type { Exercise, Measure, PlannedExercise, Rotation, Workout } from "../logic/types";
+import type { Exercise, Measure, PlannedExercise, Schedule, Workout } from "../logic/types";
 import type { WorkoutDB } from "./db";
 
 function kebab(name: string): string {
@@ -19,6 +19,9 @@ export const SEED_WORKOUT_IDS = [
   "seed-workout-upper-b",
   "seed-workout-lower-b",
 ];
+
+/** The owner's week: Mon Upper A, Tue Lower A, Wed rest, Thu Upper B, Fri Lower B, weekend rest. */
+export const SEED_SCHEDULE: (string | null)[] = [SEED_WORKOUT_IDS[0], SEED_WORKOUT_IDS[1], null, SEED_WORKOUT_IDS[2], SEED_WORKOUT_IDS[3], null, null];
 
 type SeedLine = { name: string; sets: number; min: number; max?: number; label?: string; measure?: Measure };
 
@@ -80,7 +83,7 @@ const clean = { updatedAt: EPOCH, dirty: 0 as const, deleted: false };
  * dirty 0, so any real copy in the cloud always replaces them.
  */
 export async function seedIfEmpty(db: WorkoutDB): Promise<void> {
-  await db.transaction("rw", db.exercises, db.workouts, db.rotation, async () => {
+  await db.transaction("rw", db.exercises, db.workouts, db.schedule, async () => {
     if ((await db.workouts.count()) > 0) return;
 
     const exercises = new Map<string, Exercise>();
@@ -103,10 +106,10 @@ export async function seedIfEmpty(db: WorkoutDB): Promise<void> {
         return planned;
       }),
     }));
-    const rotation: Rotation = { ...clean, id: "rotation", workoutIds: [...SEED_WORKOUT_IDS] };
+    const schedule: Schedule = { ...clean, id: "schedule", days: [...SEED_SCHEDULE] };
 
     await db.exercises.bulkPut([...exercises.values()]);
     await db.workouts.bulkPut(workouts);
-    await db.rotation.put(rotation);
+    await db.schedule.put(schedule);
   });
 }

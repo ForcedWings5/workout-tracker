@@ -1,11 +1,11 @@
 import { parseBackup } from "../../src/logic/backup";
 
 const valid = {
-  version: 1,
+  version: 2,
   exportedAt: "2026-11-22T15:00:00.000Z",
   exercises: [{ id: "e1", name: "Bench", measure: "reps", archived: false, updatedAt: "x", deleted: false, dirty: 0 }],
   workouts: [{ id: "w1", name: "Upper A", exercises: [], updatedAt: "x", deleted: false, dirty: 0 }],
-  rotation: [{ id: "rotation", workoutIds: ["w1"], updatedAt: "x", deleted: false, dirty: 0 }],
+  schedule: [{ id: "schedule", days: ["w1", null, null, null, null, null, null], updatedAt: "x", deleted: false, dirty: 0 }],
   sessions: [{ id: "s1", workoutName: "Upper A", date: "2026-11-20", status: "finished", entries: [], updatedAt: "x", deleted: true, dirty: 0 }],
 };
 
@@ -25,7 +25,7 @@ test("JSON that isn't a backup is refused", () => {
 });
 
 test("a backup from a newer app version is refused", () => {
-  expect(parseBackup(JSON.stringify({ ...valid, version: 2 }))).toEqual({ ok: false, error: "This backup is from a newer version of the app." });
+  expect(parseBackup(JSON.stringify({ ...valid, version: 3 }))).toEqual({ ok: false, error: "This backup is from a newer version of the app." });
 });
 
 test("a backup missing its sessions is refused", () => {
@@ -67,4 +67,23 @@ test("Final: a workout's planned exercise must name its exercise and targets", (
 test("Final: a backup without a real export date is refused", () => {
   expect(parseBackup(JSON.stringify({ ...valid, exportedAt: undefined }))).toEqual(DAMAGED);
   expect(parseBackup(JSON.stringify({ ...valid, exportedAt: "yesterday-ish" }))).toEqual(DAMAGED);
+});
+
+test("a version 1 backup's rotation becomes the weekly schedule", () => {
+  const { schedule: _, ...rest } = valid;
+  const workouts = ["w1", "w2", "w3", "w4"].map((id) => ({ ...valid.workouts[0], id }));
+  const v1 = { ...rest, version: 1, workouts, rotation: [{ id: "rotation", workoutIds: ["w1", "w2", "w3", "w4"], updatedAt: "2026-11-01T00:00:00.000Z", deleted: false, dirty: 1 }] };
+  const result = parseBackup(JSON.stringify(v1));
+  if (!result.ok) throw new Error(result.error);
+  expect(result.backup.version).toBe(2);
+  expect(result.backup.schedule).toEqual([
+    { id: "schedule", days: ["w1", "w2", null, "w3", "w4", null, null], updatedAt: "2026-11-01T00:00:00.000Z", deleted: false, dirty: 1 },
+  ]);
+  expect("rotation" in result.backup).toBe(false);
+});
+
+test("a schedule that isn't seven days of workouts or rest is refused", () => {
+  const row = valid.schedule[0];
+  expect(parseBackup(JSON.stringify({ ...valid, schedule: [{ ...row, days: [null, null, null, null, null, null] }] }))).toEqual(DAMAGED);
+  expect(parseBackup(JSON.stringify({ ...valid, schedule: [{ ...row, days: [1, null, null, null, null, null, null] }] }))).toEqual(DAMAGED);
 });

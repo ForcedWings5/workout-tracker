@@ -2,23 +2,28 @@
 // checked in the browser. Loaded from main.tsx only when `import.meta.env.DEV` and the URL has
 // `?demo`, so production builds never include or run it. Every demo session is labelled in its note.
 import { todayLocal } from "../logic/clock";
+import { addDays, weekdayOf } from "../logic/schedule";
 import type { LoggedSet, Session } from "../logic/types";
 import type { WorkoutDB } from "./db";
+import { loadSchedule } from "./repo";
 import { live, save } from "./write";
 
 export async function seedDemoHistory(db: WorkoutDB): Promise<void> {
   const sessions = live(await db.sessions.toArray());
   if (sessions.some((s) => s.status === "finished")) return;
-  const [rotation, workouts, exercises] = await Promise.all([db.rotation.get("rotation"), db.workouts.toArray(), db.exercises.toArray()]);
-  const order = (rotation?.workoutIds ?? []).map((id) => workouts.find((w) => w.id === id)).filter((w) => w !== undefined);
+  const [days, workouts, exercises] = await Promise.all([loadSchedule(db), db.workouts.toArray(), db.exercises.toArray()]);
+  const byId = new Map(live(workouts).map((w) => [w.id, w]));
   const measure = Object.fromEntries(exercises.map((e) => [e.id, e.measure]));
+  const today = todayLocal();
+  const rounds = new Map<string, number>();
 
-  for (let k = 0; k < 12; k++) {
-    const workout = order[k % order.length];
-    if (!workout) return;
-    const day = new Date();
-    day.setDate(day.getDate() - (12 - k) * 3);
-    const round = Math.floor(k / order.length);
+  // The last three weeks before today, each workout on the days the week schedules it.
+  for (let back = 21; back >= 1; back--) {
+    const date = addDays(today, -back);
+    const workout = byId.get(days[weekdayOf(date)] ?? "");
+    if (!workout) continue;
+    const round = rounds.get(workout.id) ?? 0;
+    rounds.set(workout.id, round + 1);
     const entries: Session["entries"] = workout.exercises.map((p, i) => {
       const timed = measure[p.exerciseId] === "seconds";
       const sets: LoggedSet[] = Array.from({ length: p.sets }, (_, n) =>
@@ -28,6 +33,6 @@ export async function seedDemoHistory(db: WorkoutDB): Promise<void> {
       );
       return { exerciseId: p.exerciseId, planned: { sets: p.sets, targetMin: p.targetMin, targetMax: p.targetMax, label: p.label }, sets, ...(i === 0 ? { note: "Demo history (dev only)" } : {}) };
     });
-    await save(db.sessions, { id: `demo-session-${k}`, workoutId: workout.id, workoutName: workout.name, date: todayLocal(day), status: "finished", entries });
+    await save(db.sessions, { id: `demo-session-${date}`, workoutId: workout.id, workoutName: workout.name, date, status: "finished", entries });
   }
 }

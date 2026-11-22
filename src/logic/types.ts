@@ -1,7 +1,7 @@
 // Domain types. Shapes follow the spec's Data model section.
 
 export type Measure = "reps" | "seconds";
-export type Kind = "exercise" | "workout" | "rotation" | "session";
+export type Kind = "exercise" | "workout" | "rotation" | "schedule" | "session";
 
 /** Every synced record carries these fields. */
 export type SyncMeta = {
@@ -38,8 +38,11 @@ export type Workout = SyncMeta & {
   exercises: PlannedExercise[];
 };
 
-/** Single record, id "rotation". */
+/** Single record, id "rotation". Retired: replaced by Schedule; read only when upgrading and importing old backups. */
 export type Rotation = SyncMeta & { workoutIds: string[] };
+
+/** Single record, id "schedule". Seven days, Monday first: a workout id, or null for Rest. */
+export type Schedule = SyncMeta & { days: (string | null)[] };
 
 export type LoggedSet = {
   /** Pounds, decimals allowed, blank = bodyweight. */

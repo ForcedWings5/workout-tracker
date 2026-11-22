@@ -43,7 +43,7 @@ test("startEmptyWorkout creates an in-progress 'Workout' with no workout and no 
   await expect(startEmptyWorkout(db)).rejects.toThrow("A workout is already in progress");
 });
 
-test("a one-off workout doesn't change next up after finishing", async () => {
+test("a one-off workout never counts toward the week", async () => {
   const upper = await startWorkout(db, UPPER_A);
   await updateSet(db, upper, 0, 0, { weight: 65, amount: 10, done: true });
   await finishWorkout(db, upper);
@@ -52,7 +52,10 @@ test("a one-off workout doesn't change next up after finishing", async () => {
   await addExerciseToSession(db, oneOff, BENCH);
   await updateSet(db, oneOff, 0, 0, { done: true });
   expect(await finishWorkout(db, oneOff)).toBe("finished");
-  expect((await loadTodayState(db)).nextUpId).toBe(LOWER_A);
+  // Thursday: Upper A (done Wednesday) covers Monday; the one-off covers nothing.
+  const { plan } = await loadTodayState(db);
+  expect(plan.today).toEqual({ workoutId: "seed-workout-upper-b", status: "todo" });
+  expect(plan.missed).toEqual([{ workoutId: LOWER_A, date: "2026-11-17" }]);
 });
 
 test("an added exercise gets one set pre-filled from history", async () => {
