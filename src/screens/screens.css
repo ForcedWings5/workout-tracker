@@ -656,3 +656,197 @@ button.set__n::before {
   line-height: 20px;
   color: var(--ink-2);
 }
+
+/* ---------- Today: the week ---------- */
+
+.contract__done {
+  margin-top: var(--space-3);
+}
+
+.contract__done-status {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.missed {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.missed__text {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- Workouts: This week ---------- */
+
+.week {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.week li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.week__day {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.week__day:active {
+  filter: brightness(0.92);
+}
+
+.week__name {
+  width: 108px;
+  flex: none;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
+.week__workout {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.week__workout--rest {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.week__chevron {
+  flex: none;
+  color: var(--ink-2);
+}
+
+/* ---------- Progress: history calendar ---------- */
+
+.calendar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0;
+}
+
+.calendar__title {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 650;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-top: var(--space-2);
+}
+
+.calendar__weekday {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-align: center;
+  padding-bottom: var(--space-1);
+}
+
+.calendar__day {
+  position: relative;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+}
+
+.calendar__day--today {
+  border-color: var(--ink);
+}
+
+.calendar__day--selected {
+  background: var(--field);
+}
+
+.calendar__mark {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red-ink);
+}
+
+.calendar__list {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--rule);
+}
+
+.calendar__session {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.calendar__session:active,
+.calendar__day:active {
+  filter: brightness(0.92);
+}
+
+.week__picker {
+  margin-top: var(--space-3);
+}
+
+.week__check {
+  flex: none;
+  margin-left: auto;
+  color: var(--ink);
+}
+
+/* On the narrowest screens (320pt), the calendar uses the full width so every day stays a 44px target. */
+@media (max-width: 359px) {
+  .calendar {
+    margin-inline: 0;
+    padding-inline: var(--space-1);
+  }
+
+  .calendar__head {
+    margin-inline: 0;
+  }
+}

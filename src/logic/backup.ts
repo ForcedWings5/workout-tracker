@@ -1,16 +1,20 @@
-import type { Exercise, Rotation, Session, Workout } from "./types";
+import { scheduleFromRotation } from "./schedule";
+import type { Exercise, Rotation, Schedule, Session, Workout } from "./types";
 
-/** The backup file. Bump `version` whenever this shape changes, and keep reading older ones. */
+/**
+ * The backup file. Bump `version` whenever this shape changes, and keep reading older ones.
+ * Version 2: the weekly `schedule` replaced version 1's `rotation`.
+ */
 export type Backup = {
-  version: 1;
+  version: 2;
   exportedAt: string;
   exercises: Exercise[];
   workouts: Workout[];
-  rotation: Rotation[];
+  schedule: Schedule[];
   sessions: Session[];
 };
 
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 const NOT_A_BACKUP = "This file isn't a Workout Tracker backup.";
 const NEWER = "This backup is from a newer version of the app.";
@@ -38,10 +42,11 @@ const isEntry = (e: unknown) =>
  * Enough shape for each row that every screen can open it without crashing. Import clears the
  * phone first, so anything a screen reads has to be checked here.
  */
-const ROW_CHECKS: Record<"exercises" | "workouts" | "rotation" | "sessions", (r: Row) => boolean> = {
+const ROW_CHECKS: Record<"exercises" | "workouts" | "rotation" | "schedule" | "sessions", (r: Row) => boolean> = {
   exercises: (r) => isString(r.name) && (r.measure === "reps" || r.measure === "seconds"),
   workouts: (r) => isString(r.name) && Array.isArray(r.exercises) && r.exercises.every(isPlannedExercise),
   rotation: (r) => Array.isArray(r.workoutIds) && r.workoutIds.every(isString),
+  schedule: (r) => Array.isArray(r.days) && r.days.length === 7 && r.days.every((d) => d === null || isString(d)),
   sessions: (r) =>
     isString(r.workoutName) &&
     isString(r.date) &&
@@ -60,14 +65,24 @@ export function parseBackup(text: string): { ok: true; backup: Backup } | { ok: 
   }
   if (!isRow(data) || typeof data.version !== "number") return { ok: false, error: NOT_A_BACKUP };
   if (data.version > BACKUP_VERSION) return { ok: false, error: NEWER };
-  if (data.version !== BACKUP_VERSION) return { ok: false, error: NOT_A_BACKUP };
+  if (data.version !== 1 && data.version !== 2) return { ok: false, error: NOT_A_BACKUP };
 
   if (!isString(data.exportedAt) || Number.isNaN(Date.parse(data.exportedAt))) return { ok: false, error: DAMAGED };
 
-  for (const key of Object.keys(ROW_CHECKS) as (keyof typeof ROW_CHECKS)[]) {
+  const keys = ["exercises", "workouts", data.version === 1 ? "rotation" : "schedule", "sessions"] as const;
+  for (const key of keys) {
     const rows = data[key];
     if (!Array.isArray(rows)) return { ok: false, error: NOT_A_BACKUP };
     if (!rows.every((r) => isRow(r) && isString(r.id) && r.id !== "" && ROW_CHECKS[key](r))) return { ok: false, error: DAMAGED };
   }
-  return { ok: true, backup: data as unknown as Backup };
+  if (data.version === 2) return { ok: true, backup: data as unknown as Backup };
+
+  // Version 1: turn the rotation into the week the same way the database upgrade does.
+  const { rotation, ...rest } = data as unknown as Omit<Backup, "version" | "schedule"> & { rotation: Rotation[] };
+  const row = rotation.find((r) => r.id === "rotation" && !r.deleted);
+  const liveWorkouts = rest.workouts.filter((w) => !w.deleted).map((w) => w.id);
+  const schedule: Schedule[] = row
+    ? [{ id: "schedule", days: scheduleFromRotation(row.workoutIds, liveWorkouts), updatedAt: row.updatedAt, deleted: false, dirty: row.dirty }]
+    : [];
+  return { ok: true, backup: { ...rest, version: 2, schedule } };
 }

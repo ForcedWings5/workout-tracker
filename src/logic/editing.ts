@@ -1,4 +1,4 @@
-// Rules for editing workouts, the rotation and exercises.
+// Rules for editing workouts and exercises.
 import { parseNumberInput } from "./input";
 import type { Exercise } from "./types";
 

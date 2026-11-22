@@ -83,7 +83,7 @@ Dark-mode contrast: ink 11.0, ink-2 6.7, draft 4.2, red-ink 4.8, on-red on red-i
 - **Red ink:** confirmed sets, the primary action, text buttons on a notice ("+ Set", "Edit", "Cancel"), and the date on a last note. Nothing else.
 - **Record gold:** a personal best: the "Record" label on the set and its chart point.
 - **Draft:** pre-filled values, and nothing else.
-- **No per-workout colors.** A workout is identified by its name and its place in the rotation.
+- **No per-workout colors.** A workout is identified by its name and the days it's scheduled on.
 - **Destructive actions aren't red.** Red already means "done." Delete and discard are plain ink text buttons inside a confirmation sheet, with a label that says exactly what happens ("Delete session").
 
 ## Type
@@ -198,6 +198,12 @@ A `--plank` fill, 49px tall plus the bottom safe area, with four tabs: Today, Pr
 
 Bottom sheets (confirmations, picking an exercise) slide up as a notice with 12px top corners over a `rgba(0,0,0,0.5)` scrim. Use a sheet only when the action needs a confirmation (discard, delete, import). Everything else happens inline.
 
+### Calendar
+
+- A notice with the month and year as its heading, previous and next month buttons (next is disabled on the current month), and weekday initials, Monday first.
+- Day numbers in `--ink`, 16px tabular, each a 44px tap target. A day with a finished workout has a 6px `--red-ink` dot under the number (red ink means done). Today has a 2px `--ink` outline. The selected day is shaded with the field color.
+- Selecting a day lists its workouts below a rule ("Upper A · 15 sets"), or says "No workout on Monday, Nov 16."
+
 ### Progress chart
 
 - It sits on a notice, drawn in SVG.
@@ -212,10 +218,10 @@ An empty notice that says what to do, never "Nothing here." For example: "No ses
 
 ## Screens
 
-- **Today:** the board, with the title "Today". The next-up workout is a large notice with its name in the 38px blackletter, the subtitle, "6 exercises · last 11/12", and the primary "Start workout". Below it, the other three workouts are smaller notices with 28px titles, tappable to start instead. An in-progress session replaces the next-up notice with "Resume" and "Discard".
+- **Today:** the board, with the title "Today". Today's scheduled workout is a large notice: "Today · Monday · 6 exercises · last 11/12", its name in the 38px blackletter, the subtitle, and the primary "Start workout". Once it's done the button gives way to "Done today" (or "Done this week (Monday)") and "Next: Lower A, tomorrow". On a rest day the notice reads "Rest day" in the title style with the Next line. A workout missed earlier this week gets its own notice, "Missed Monday: Upper A" with "Do Upper A instead" (the primary on a rest day, an outline button otherwise). Below, every other workout is a smaller notice with a 28px title, tappable to start instead. An in-progress session replaces all of this with "Resume" and "Discard".
 - **Log Workout:** see the direction contract's first viewport (`.impeccable/surfaces/src-app-tsx.md`). Confirming a set scrolls the next set into the same spot on screen.
-- **Progress:** a list notice of exercises, most recent first. Tapping one opens its chart notice, then past sessions as rows with weight × reps and notes.
-- **Workouts:** a notice per workout in rotation order, with Move up / Move down buttons to reorder. Editing a workout opens the same notice layout as Log Workout, but showing targets instead of sets.
+- **Progress:** a calendar notice (see Calendar), then a list notice of exercises, most recent first. Tapping one opens its chart notice, then past sessions as rows with weight × reps and notes.
+- **Workouts:** a "This week" notice with seven rows, Monday to Sunday, each showing the day and its workout or "Rest"; tapping a row opens a sheet to pick a workout or Rest, with a check on the current choice. Below it, a notice per workout in week order with its days ("Monday · 6 exercises", "Not scheduled"). Editing a workout opens the same notice layout as Log Workout, but showing targets instead of sets.
 - **Settings:** notices for Cloud backup (status line, "Sync now", sign in or out), Backup file (export and import), and a plain note: "Always open Workout Tracker from the home-screen icon."
 
 ## Motion

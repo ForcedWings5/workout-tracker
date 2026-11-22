@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EditWorkout } from "./screens/EditWorkout";
 import { ExerciseHistory } from "./screens/ExerciseHistory";
+import type { CalendarState } from "./screens/HistoryCalendar";
 import { LogWorkout } from "./screens/LogWorkout";
 import { Progress } from "./screens/Progress";
 import { Settings } from "./screens/Settings";
@@ -12,8 +13,9 @@ type Overlay =
   | { kind: "log"; sessionId: string }
   | { kind: "editWorkout"; workoutId: string }
   | { kind: "exercise"; exerciseId: string }
-  | { kind: "pastSession"; sessionId: string; exerciseId: string; exerciseName: string };
-type View = { tab: Tab; overlay?: Overlay };
+  /** A finished session opened for editing; closing it goes back to where it was opened from. */
+  | { kind: "pastSession"; sessionId: string; backLabel: string; returnTo: View };
+type View = { tab: Tab; overlay?: Overlay; calendar?: CalendarState };
 
 export default function App() {
   const [view, setView] = useState<View>({ tab: "today" });
@@ -27,16 +29,10 @@ export default function App() {
   }
 
   if (view.overlay?.kind === "pastSession") {
-    const { sessionId, exerciseId, exerciseName } = view.overlay;
+    const { sessionId, backLabel, returnTo } = view.overlay;
     return (
       <div className="app">
-        <LogWorkout
-          key={sessionId}
-          sessionId={sessionId}
-          mode="edit"
-          backLabel={exerciseName}
-          onClose={() => setView({ tab: "progress", overlay: { kind: "exercise", exerciseId } })}
-        />
+        <LogWorkout key={sessionId} sessionId={sessionId} mode="edit" backLabel={backLabel} onClose={() => setView(returnTo)} />
       </div>
     );
   }
@@ -48,9 +44,17 @@ export default function App() {
         <main>
           <ExerciseHistory
             exerciseId={exerciseId}
-            onBack={() => setView({ tab: "progress" })}
+            onBack={() => setView({ tab: "progress", calendar: view.calendar })}
             onOpenSession={(sessionId, exerciseName) =>
-              setView({ tab: "progress", overlay: { kind: "pastSession", sessionId, exerciseId, exerciseName } })
+              setView({
+                tab: "progress",
+                overlay: {
+                  kind: "pastSession",
+                  sessionId,
+                  backLabel: exerciseName,
+                  returnTo: { tab: "progress", overlay: { kind: "exercise", exerciseId }, calendar: view.calendar },
+                },
+              })
             }
           />
           <div className="tabbar-spacer" />
@@ -77,7 +81,14 @@ export default function App() {
         {view.tab === "today" ? (
           <Today onOpenLog={(sessionId) => setView({ tab: "today", overlay: { kind: "log", sessionId } })} />
         ) : view.tab === "progress" ? (
-          <Progress onOpen={(exerciseId) => setView({ tab: "progress", overlay: { kind: "exercise", exerciseId } })} />
+          <Progress
+            onOpen={(exerciseId) => setView({ tab: "progress", overlay: { kind: "exercise", exerciseId }, calendar: view.calendar })}
+            calendar={view.calendar}
+            onCalendar={(calendar) => setView({ tab: "progress", calendar })}
+            onOpenSession={(sessionId) =>
+              setView({ tab: "progress", overlay: { kind: "pastSession", sessionId, backLabel: "Progress", returnTo: { tab: "progress", calendar: view.calendar } } })
+            }
+          />
         ) : view.tab === "workouts" ? (
           <Workouts onEdit={(workoutId) => setView({ tab: "workouts", overlay: { kind: "editWorkout", workoutId } })} />
         ) : (

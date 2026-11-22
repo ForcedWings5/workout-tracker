@@ -34,7 +34,7 @@ test("export shares one backup file when the phone can share files", async () =>
   const files: File[] = share.mock.calls[0][0].files;
   expect(files).toHaveLength(1);
   expect(files[0].name).toMatch(/^workout-tracker-backup-\d{4}-\d{2}-\d{2}\.json$/);
-  expect(JSON.parse(await files[0].text()).version).toBe(1);
+  expect(JSON.parse(await files[0].text()).version).toBe(2);
   expect(await screen.findByText(/^Last export: \d+\/\d+$/)).toBeInTheDocument();
   expect((await db.syncState.get("state"))?.lastExportAt).toBeTruthy();
 });

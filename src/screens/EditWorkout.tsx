@@ -117,7 +117,7 @@ export function EditWorkout({ workoutId, onClose }: Props) {
       <div className="tabbar-spacer" />
 
       <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this workout?">
-        <p className="sheet__body">{title || "It"} comes out of the rotation. Past sessions keep their sets.</p>
+        <p className="sheet__body">{title ? `${title}'s` : "Its"} days become Rest. Past sessions keep their sets.</p>
         <div className="sheet__actions">
           <Button variant="outline" onClick={() => setConfirmDelete(false)}>
             Keep workout

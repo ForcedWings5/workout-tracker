@@ -1,5 +1,5 @@
 import { createDb, type WorkoutDB } from "../../src/storage/db";
-import { SEED_WORKOUT_IDS, seedExerciseId, seedIfEmpty } from "../../src/storage/seed";
+import { SEED_SCHEDULE, SEED_WORKOUT_IDS, seedExerciseId, seedIfEmpty } from "../../src/storage/seed";
 import { EPOCH } from "../../src/logic/clock";
 
 let db: WorkoutDB;
@@ -14,10 +14,12 @@ test("seedExerciseId is a kebab-case fixed id", () => {
   expect(seedExerciseId("Barbell Bench Press")).toBe("seed-exercise-barbell-bench-press");
 });
 
-test("seeds four workouts in rotation order", async () => {
+test("seeds four workouts and the owner's week", async () => {
   await seedIfEmpty(db);
   expect(await db.workouts.count()).toBe(4);
-  expect((await db.rotation.get("rotation"))?.workoutIds).toEqual(SEED_WORKOUT_IDS);
+  expect((await db.schedule.get("schedule"))?.days).toEqual(SEED_SCHEDULE);
+  expect(SEED_SCHEDULE).toEqual(["seed-workout-upper-a", "seed-workout-lower-a", null, "seed-workout-upper-b", "seed-workout-lower-b", null, null]);
+  expect(await db.rotation.count()).toBe(0);
   expect(SEED_WORKOUT_IDS).toEqual([
     "seed-workout-upper-a",
     "seed-workout-lower-a",
@@ -84,7 +86,7 @@ test("every seed row is clean and epoch-dated", async () => {
   const rows = [
     ...(await db.exercises.toArray()),
     ...(await db.workouts.toArray()),
-    ...(await db.rotation.toArray()),
+    ...(await db.schedule.toArray()),
   ];
   expect(rows.length).toBeGreaterThan(0);
   for (const row of rows) {

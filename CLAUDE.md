@@ -28,7 +28,7 @@ src/sync/      Supabase sign-in and the sync runner (pull, then push). Talks to 
 supabase/migrations/   SQL for the cloud `records` table and its row level security.
 ```
 
-The rules live in `src/logic/`: next-up rotation, pre-fill, progress series, finishing a session, backup export and import, and sync merge rules. New rules go there with tests (write the test first), not inside components. The Supabase client sits behind a small interface so sync tests use an in-memory fake.
+The rules live in `src/logic/`: the weekly schedule (what Today shows), pre-fill, progress series, finishing a session, backup export and import, and sync merge rules. New rules go there with tests (write the test first), not inside components. The Supabase client sits behind a small interface so sync tests use an in-memory fake.
 
 ## Rules that must not break
 
@@ -37,7 +37,7 @@ The rules live in `src/logic/`: next-up rotation, pre-fill, progress series, fin
 - **Only done sets count.** Pre-filled values are suggestions until the user taps ✓. Saved sessions, pre-fill, and progress all read only `done` sets.
 - **Autosave on every change.** No save buttons. An in-progress workout must survive the phone locking, Safari reloading, or the app being closed.
 - **Pre-fill source:** the most recent finished session of the same workout that has the exercise, otherwise the most recent finished session of any workout that has it.
-- **Next up:** the workout after the most recently finished rotation workout. One-off workouts don't move it.
+- **Today follows the weekly schedule:** today's scheduled workout, plus a reminder for one missed earlier this week. A workout done any day this week counts. One-off workouts never count. See `docs/superpowers/specs/2026-11-22-weekly-schedule-design.md`.
 - **Offline first.** Screens read and write only local Dexie, never Supabase, and never wait on the network. Sync runs separately and fails silently, retrying on the next trigger.
 - **All writes to synced records go through the one storage helper** that sets `updatedAt` and `dirty = 1`. Never write a synced table directly.
 - **Deletes are tombstones** (`deleted = true`), so they sync. Every query filters them out.

@@ -36,9 +36,11 @@ async function sessionRow(id: string) {
   return s;
 }
 
-test("with no history, next up is Upper A and nothing is in progress", async () => {
+test("with no history on a Wednesday, it's a rest day with Upper B next and nothing in progress", async () => {
   const state = await loadTodayState(db);
-  expect(state.nextUpId).toBe(UPPER_A);
+  expect(state.plan.today).toBeUndefined();
+  expect(state.plan.next).toEqual({ workoutId: "seed-workout-upper-b", date: "2026-11-19" });
+  expect(state.plan.missed.map((m) => m.workoutId)).toEqual([UPPER_A, LOWER_A]);
   expect(state.inProgress).toBeUndefined();
   expect(state.workouts.map((w) => w.id)).toEqual([UPPER_A, LOWER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
   expect(state.lastDateByWorkout).toEqual({});
@@ -113,12 +115,12 @@ test("finishWorkout with zero done sets returns empty and writes nothing", async
   expect(await sessionRow(id)).toEqual(before);
 });
 
-test("after finishing Upper A, next up is Lower A", async () => {
+test("finishing Upper A on Wednesday catches up Monday", async () => {
   const id = await startWorkout(db, UPPER_A);
   await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
   expect(await finishWorkout(db, id)).toBe("finished");
   const state = await loadTodayState(db);
-  expect(state.nextUpId).toBe(LOWER_A);
+  expect(state.plan.missed).toEqual([{ workoutId: LOWER_A, date: "2026-11-17" }]);
   expect(state.inProgress).toBeUndefined();
   expect(state.lastDateByWorkout[UPPER_A]).toBe("2026-11-18");
   const saved = await sessionRow(id);
@@ -126,7 +128,7 @@ test("after finishing Upper A, next up is Lower A", async () => {
   expect(saved.entries).toHaveLength(1);
 });
 
-test("Review Focus 3: a session left open for days keeps its date and still advances next up", async () => {
+test("Review Focus 3: a session left open for days keeps its date and still counts for its week", async () => {
   vi.setSystemTime(new Date("2026-11-10T15:00:00Z"));
   const id = await startWorkout(db, UPPER_A);
   await updateSet(db, id, 0, 0, { weight: 65, amount: 10, done: true });
@@ -135,7 +137,7 @@ test("Review Focus 3: a session left open for days keeps its date and still adva
   expect(state.inProgress?.id).toBe(id);
   await finishWorkout(db, id);
   expect((await sessionRow(id)).date).toBe("2026-11-10");
-  expect((await loadTodayState(db)).nextUpId).toBe(LOWER_A);
+  expect((await loadTodayState(db)).plan.missed.map((m) => m.workoutId)).toEqual([LOWER_A, "seed-workout-upper-b", "seed-workout-lower-b"]);
 });
 
 test("discardWorkout tombstones the session", async () => {

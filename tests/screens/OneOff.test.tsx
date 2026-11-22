@@ -8,7 +8,10 @@ let db: WorkoutDB;
 beforeEach(async () => {
   db = await seededDb();
 });
-afterEach(() => db.close());
+afterEach(() => {
+  vi.useRealTimers();
+  db.close();
+});
 
 test("start empty workout, name it, and add an exercise", async () => {
   const user = userEvent.setup();
@@ -29,7 +32,10 @@ test("start empty workout, name it, and add an exercise", async () => {
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
-test("a rotation workout can take an extra exercise mid-session", async () => {
+test("a scheduled workout can take an extra exercise mid-session", async () => {
+  // A Monday, so Today offers Upper A.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 16, 15));
   const user = userEvent.setup();
   renderApp(db);
   await user.click(await screen.findByRole("button", { name: "Start workout" }));

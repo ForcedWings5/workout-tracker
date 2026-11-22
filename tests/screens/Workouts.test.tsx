@@ -5,7 +5,6 @@ import { seedExerciseId } from "../../src/storage/seed";
 import { renderApp, seededDb } from "./helpers";
 
 const UPPER_A = "seed-workout-upper-a";
-const LOWER_A = "seed-workout-lower-a";
 const BENCH = seedExerciseId("Barbell Bench Press");
 let db: WorkoutDB;
 
@@ -36,17 +35,51 @@ async function editBench() {
   return { user, bench };
 }
 
-test("lists the workouts in rotation order", async () => {
+test("This week shows each day's workout or Rest, Monday first", async () => {
+  await openWorkouts();
+  const week = await screen.findByRole("region", { name: "This week" });
+  const days = within(week).getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+  expect(days).toEqual([
+    "Monday: Upper A",
+    "Tuesday: Lower A",
+    "Wednesday: Rest",
+    "Thursday: Upper B",
+    "Friday: Lower B",
+    "Saturday: Rest",
+    "Sunday: Rest",
+  ]);
+});
+
+test("picking a workout for a day saves it", async () => {
+  const user = await openWorkouts();
+  await user.click(await screen.findByRole("button", { name: "Wednesday: Rest" }));
+  const sheet = screen.getByRole("dialog", { name: "Wednesday" });
+  await user.click(within(sheet).getByRole("button", { name: "Upper B" }));
+  await waitFor(async () => expect((await db.schedule.get("schedule"))?.days[2]).toBe("seed-workout-upper-b"));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Wednesday: Upper B" })).toBeInTheDocument();
+});
+
+test("picking Rest clears a day", async () => {
+  const user = await openWorkouts();
+  await user.click(await screen.findByRole("button", { name: "Monday: Upper A" }));
+  await user.click(within(screen.getByRole("dialog", { name: "Monday" })).getByRole("button", { name: "Rest" }));
+  await waitFor(async () => expect((await db.schedule.get("schedule"))?.days[0]).toBeNull());
+});
+
+test("workouts are listed in week order with their days", async () => {
   await openWorkouts();
   const edits = await screen.findAllByRole("button", { name: /^Edit / });
   expect(edits.map((b) => b.getAttribute("aria-label"))).toEqual(["Edit Upper A", "Edit Lower A", "Edit Upper B", "Edit Lower B"]);
+  expect(edits[0]).toHaveTextContent("Monday · 6 exercises");
+  expect(screen.queryByRole("button", { name: /^Move / })).not.toBeInTheDocument();
 });
 
-test("moving Lower A up makes it first in the rotation", async () => {
+test("a workout on two days lists both", async () => {
   const user = await openWorkouts();
-  await user.click(await screen.findByRole("button", { name: "Move Lower A up" }));
-  await waitFor(async () => expect((await db.rotation.get("rotation"))?.workoutIds[0]).toBe(LOWER_A));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Move Lower A up" })).toBeDisabled());
+  await user.click(await screen.findByRole("button", { name: "Saturday: Rest" }));
+  await user.click(within(screen.getByRole("dialog", { name: "Saturday" })).getByRole("button", { name: "Upper A" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Edit Upper A" })).toHaveTextContent("Monday, Saturday · 6 exercises"));
 });
 
 test("changing bench sets to 5 and leaving the field saves it", async () => {
@@ -119,20 +152,26 @@ test("delete workout asks first, then it's gone from the list", async () => {
   const user = await openEditor("Upper A");
   await user.click(screen.getByRole("button", { name: "Delete workout" }));
   const sheet = screen.getByRole("dialog", { name: "Delete this workout?" });
+  // Final: the copy says what actually happens now that there's no rotation.
+  expect(within(sheet).getByText("Upper A's days become Rest. Past sessions keep their sets.")).toBeInTheDocument();
   await user.click(within(sheet).getByRole("button", { name: "Delete workout" }));
   await screen.findByRole("heading", { level: 1, name: "Workouts" });
   await waitFor(() => expect(screen.queryByRole("button", { name: "Edit Upper A" })).not.toBeInTheDocument());
-  expect((await db.rotation.get("rotation"))?.workoutIds).not.toContain(UPPER_A);
+  expect((await db.schedule.get("schedule"))?.days[0]).toBeNull();
+  expect(await screen.findByRole("button", { name: "Monday: Rest" })).toBeInTheDocument();
 });
 
-test("new workout opens the editor for an empty workout at the end of the rotation", async () => {
+test("new workout opens the editor for an empty, unscheduled workout", async () => {
   const user = await openWorkouts();
   await user.click(await screen.findByRole("button", { name: "New workout" }));
   await screen.findByRole("heading", { level: 1, name: "New workout" });
   expect(screen.getByText(/No exercises yet/)).toBeInTheDocument();
-  const ids = (await db.rotation.get("rotation"))!.workoutIds;
-  expect(ids).toHaveLength(5);
-  expect((await db.workouts.get(ids[4]))?.name).toBe("New workout");
+  const added = (await db.workouts.toArray()).find((w) => w.name === "New workout");
+  expect(added).toBeDefined();
+  expect((await db.schedule.get("schedule"))?.days).not.toContain(added!.id);
+  // The back link (the tab bar has a "Workouts" button too).
+  await user.click(screen.getAllByRole("button", { name: "Workouts" })[0]);
+  expect(await screen.findByRole("button", { name: "Edit New workout" })).toHaveTextContent("Not scheduled · 0 exercises");
 });
 
 test("Final #1: deleting a name one character at a time and leaving puts the old name back", async () => {
