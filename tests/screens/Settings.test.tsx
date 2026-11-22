@@ -94,3 +94,15 @@ test("the home-screen note is there", async () => {
   await openSettings();
   expect(screen.getByText("Always open Workout Tracker from the home-screen icon.")).toBeInTheDocument();
 });
+
+test("Final: if iOS refuses to share (too long after the tap), the file downloads instead", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("needs a fresh tap", "NotAllowedError"));
+  Object.assign(navigator, { canShare: () => true, share });
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:backup"), revokeObjectURL: vi.fn() }));
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(await screen.findByText(/^Last export: /)).toBeInTheDocument();
+});

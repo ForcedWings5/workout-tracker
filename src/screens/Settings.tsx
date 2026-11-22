@@ -12,7 +12,11 @@ import { Sheet } from "../ui/Sheet";
 /** "11/12" from an ISO timestamp, in the phone's local date. */
 const localShortDate = (iso: string) => shortDate(todayLocal(new Date(iso)));
 
-/** Hands the file to the iOS share sheet (Save to Files, AirDrop…), or downloads it where that isn't available. */
+/**
+ * Hands the file to the iOS share sheet (Save to Files, AirDrop…), or downloads it where that
+ * isn't available. Safari only allows sharing shortly after the tap; if building a big backup
+ * took too long it refuses with NotAllowedError, and the file downloads instead.
+ */
 async function deliver(file: File): Promise<"saved" | "cancelled"> {
   if (navigator.canShare?.({ files: [file] })) {
     try {
@@ -20,7 +24,7 @@ async function deliver(file: File): Promise<"saved" | "cancelled"> {
       return "saved";
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return "cancelled";
-      throw err;
+      if (!(err instanceof DOMException && err.name === "NotAllowedError")) throw err;
     }
   }
   const url = URL.createObjectURL(file);

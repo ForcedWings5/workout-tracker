@@ -19,18 +19,35 @@ const DAMAGED = "This backup file is damaged, so nothing was imported.";
 type Row = Record<string, unknown>;
 const isRow = (v: unknown): v is Row => typeof v === "object" && v !== null && !Array.isArray(v);
 const isString = (v: unknown): v is string => typeof v === "string";
+const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const optional = (v: unknown, check: (x: unknown) => boolean) => v === undefined || check(v);
 
-/** Just enough shape for each row that the app can open it without crashing. */
+/** Targets, as a workout plans them and a session snapshots them. */
+const isTargets = (p: unknown): p is Row =>
+  isRow(p) && isNumber(p.sets) && isNumber(p.targetMin) && optional(p.targetMax, isNumber) && optional(p.label, isString);
+
+const isPlannedExercise = (p: unknown) => isTargets(p) && isString(p.exerciseId);
+
+const isLoggedSet = (s: unknown) =>
+  isRow(s) && typeof s.done === "boolean" && optional(s.weight, isNumber) && optional(s.amount, isNumber) && optional(s.skipped, (x) => typeof x === "boolean");
+
+const isEntry = (e: unknown) =>
+  isRow(e) && isString(e.exerciseId) && isTargets(e.planned) && Array.isArray(e.sets) && e.sets.every(isLoggedSet) && optional(e.note, isString);
+
+/**
+ * Enough shape for each row that every screen can open it without crashing. Import clears the
+ * phone first, so anything a screen reads has to be checked here.
+ */
 const ROW_CHECKS: Record<"exercises" | "workouts" | "rotation" | "sessions", (r: Row) => boolean> = {
   exercises: (r) => isString(r.name) && (r.measure === "reps" || r.measure === "seconds"),
-  workouts: (r) => isString(r.name) && Array.isArray(r.exercises),
+  workouts: (r) => isString(r.name) && Array.isArray(r.exercises) && r.exercises.every(isPlannedExercise),
   rotation: (r) => Array.isArray(r.workoutIds) && r.workoutIds.every(isString),
   sessions: (r) =>
     isString(r.workoutName) &&
     isString(r.date) &&
     (r.status === "in_progress" || r.status === "finished") &&
     Array.isArray(r.entries) &&
-    r.entries.every((e) => isRow(e) && isString(e.exerciseId) && Array.isArray(e.sets)),
+    r.entries.every(isEntry),
 };
 
 /** Reads a backup file's text. Refuses anything the app couldn't safely load, so an import never half-happens. */
@@ -44,6 +61,8 @@ export function parseBackup(text: string): { ok: true; backup: Backup } | { ok: 
   if (!isRow(data) || typeof data.version !== "number") return { ok: false, error: NOT_A_BACKUP };
   if (data.version > BACKUP_VERSION) return { ok: false, error: NEWER };
   if (data.version !== BACKUP_VERSION) return { ok: false, error: NOT_A_BACKUP };
+
+  if (!isString(data.exportedAt) || Number.isNaN(Date.parse(data.exportedAt))) return { ok: false, error: DAMAGED };
 
   for (const key of Object.keys(ROW_CHECKS) as (keyof typeof ROW_CHECKS)[]) {
     const rows = data[key];

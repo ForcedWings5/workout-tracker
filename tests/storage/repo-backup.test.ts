@@ -48,7 +48,8 @@ test("import replaces what was there", async () => {
   await seedIfEmpty(other);
   const stray = await startWorkout(other, "seed-workout-upper-b");
   await importBackup(other, backup);
-  expect(await other.sessions.get(stray)).toBeUndefined();
+  const { live } = await import("../../src/storage/write");
+  expect(live(await other.sessions.toArray()).map((s) => s.id)).not.toContain(stray);
 });
 
 test("import marks every row dirty with a fresh updatedAt", async () => {
@@ -62,4 +63,12 @@ test("import marks every row dirty with a fresh updatedAt", async () => {
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every((r) => r.dirty === 1 && r.updatedAt === "2030-01-01T00:00:00.000Z")).toBe(true);
   }
+});
+
+test("Final: rows that aren't in the backup become tombstones, so the replace syncs", async () => {
+  const backup = await exportBackup(db);
+  await seedIfEmpty(other);
+  const stray = await startWorkout(other, "seed-workout-upper-b");
+  await importBackup(other, backup);
+  expect(await other.sessions.get(stray)).toMatchObject({ deleted: true, dirty: 1 });
 });

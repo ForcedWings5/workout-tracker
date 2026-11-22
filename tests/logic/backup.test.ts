@@ -39,3 +39,32 @@ test("a backup with a damaged row is refused, so nothing half-imports", () => {
   const noId = { ...valid, exercises: [{ name: "Bench", measure: "reps" }] };
   expect(parseBackup(JSON.stringify(noId))).toEqual({ ok: false, error: "This backup file is damaged, so nothing was imported." });
 });
+
+const DAMAGED = { ok: false, error: "This backup file is damaged, so nothing was imported." };
+const session1 = valid.sessions[0];
+const withEntry = (entry: unknown) => JSON.stringify({ ...valid, sessions: [{ ...session1, entries: [entry] }] });
+
+test("Final: a session entry without its planned targets is refused", () => {
+  expect(parseBackup(withEntry({ exerciseId: "e1", sets: [] }))).toEqual(DAMAGED);
+  expect(parseBackup(withEntry({ exerciseId: "e1", planned: { sets: "3", targetMin: 8 }, sets: [] }))).toEqual(DAMAGED);
+});
+
+test("Final: a set that isn't a set is refused", () => {
+  const planned = { sets: 3, targetMin: 8, targetMax: 12 };
+  expect(parseBackup(withEntry({ exerciseId: "e1", planned, sets: [null] }))).toEqual(DAMAGED);
+  expect(parseBackup(withEntry({ exerciseId: "e1", planned, sets: [{ weight: 65, amount: 10 }] }))).toEqual(DAMAGED);
+  expect(parseBackup(withEntry({ exerciseId: "e1", planned, sets: [{ weight: "65", amount: 10, done: true }] }))).toEqual(DAMAGED);
+  expect(parseBackup(withEntry({ exerciseId: "e1", planned, sets: [{ weight: 65, amount: 10, done: true }] })).ok).toBe(true);
+});
+
+test("Final: a workout's planned exercise must name its exercise and targets", () => {
+  const workout = (exercises: unknown[]) => JSON.stringify({ ...valid, workouts: [{ ...valid.workouts[0], exercises }] });
+  expect(parseBackup(workout([{ sets: 3, targetMin: 8 }]))).toEqual(DAMAGED);
+  expect(parseBackup(workout([null]))).toEqual(DAMAGED);
+  expect(parseBackup(workout([{ exerciseId: "e1", sets: 3, targetMin: 8, targetMax: 12 }])).ok).toBe(true);
+});
+
+test("Final: a backup without a real export date is refused", () => {
+  expect(parseBackup(JSON.stringify({ ...valid, exportedAt: undefined }))).toEqual(DAMAGED);
+  expect(parseBackup(JSON.stringify({ ...valid, exportedAt: "yesterday-ish" }))).toEqual(DAMAGED);
+});

@@ -6,7 +6,8 @@ import { newId } from "../logic/ids";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
 import { nextUp } from "../logic/rotation";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
-import type { Exercise, LoggedSet, Measure, Session, SyncState, Workout } from "../logic/types";
+import type { Exercise, LoggedSet, Measure, Session, SyncMeta, SyncState, Workout } from "../logic/types";
+import type { Table } from "dexie";
 import type { WorkoutDB } from "./db";
 import { live, remove, save } from "./write";
 
@@ -451,11 +452,19 @@ export async function exportBackup(db: WorkoutDB): Promise<Backup> {
 
 /**
  * Replaces everything on this phone with the backup, in one transaction. Every row is stamped
- * now and marked dirty, so the restored copy wins when it syncs.
+ * now and marked dirty, so the restored copy wins when it syncs. Rows that aren't in the backup
+ * become tombstones rather than vanishing, so the replace reaches the cloud copy too.
  */
 export async function importBackup(db: WorkoutDB, backup: Backup): Promise<void> {
   await db.transaction("rw", [db.exercises, db.workouts, db.rotation, db.sessions], async () => {
-    await Promise.all([db.exercises.clear(), db.workouts.clear(), db.rotation.clear(), db.sessions.clear()]);
+    const tombstone = async <T extends SyncMeta>(table: Table<T, string>, keep: { id: string }[]) => {
+      const ids = new Set(keep.map((r) => r.id));
+      for (const row of await table.toArray()) if (!ids.has(row.id) && !row.deleted) await save(table, { ...row, deleted: true });
+    };
+    await tombstone(db.exercises, backup.exercises);
+    await tombstone(db.workouts, backup.workouts);
+    await tombstone(db.rotation, backup.rotation);
+    await tombstone(db.sessions, backup.sessions);
     // Through save(), like every synced write: it stamps updatedAt and sets dirty.
     for (const row of backup.exercises) await save(db.exercises, row);
     for (const row of backup.workouts) await save(db.workouts, row);
