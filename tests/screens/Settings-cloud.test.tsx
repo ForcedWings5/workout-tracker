@@ -4,7 +4,7 @@ import type { WorkoutDB } from "../../src/storage/db";
 import { finishWorkout, startWorkout, updateSet } from "../../src/storage/repo";
 import { renderApp, seededDb } from "./helpers";
 
-type Status = "off" | "signed-out" | "signed-in";
+type Status = "off" | "checking" | "signed-out" | "signed-in";
 
 // A stand-in for Supabase sign-in, so the screens can be tested without a network.
 const auth = vi.hoisted(() => {
@@ -121,6 +121,13 @@ test("signed out, Today nudges once and the nudge can be dismissed for good", as
   await user.click(screen.getByRole("button", { name: "Dismiss" }));
   await waitFor(() => expect(screen.queryByText(/aren't backed up yet/)).not.toBeInTheDocument());
   view.unmount();
+  renderApp(db);
+  await screen.findByRole("heading", { level: 1, name: "Today" });
+  expect(screen.queryByText(/aren't backed up yet/)).not.toBeInTheDocument();
+});
+
+test("Final: while sign-in is still being checked, Today shows no nudge", async () => {
+  auth.set({ status: "checking" as Status });
   renderApp(db);
   await screen.findByRole("heading", { level: 1, name: "Today" });
   expect(screen.queryByText(/aren't backed up yet/)).not.toBeInTheDocument();

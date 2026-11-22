@@ -41,12 +41,16 @@ test("dirty rows are pushed and then clean", async () => {
 test("a row edited while its push is in flight stays dirty", async () => {
   const db = await device();
   const inner = createMemoryRemote();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-20T10:00:00Z"));
   const id = await finishedSession(db);
   const remote: RemoteStore = {
     pull: (since) => inner.pull(since),
     async push(rows) {
       await inner.push(rows);
-      // A new edit lands between reading the dirty rows and clearing them.
+      // A new edit lands between reading the dirty rows and clearing them. On a phone a network
+      // round trip separates the two writes, so it can't share the first one's millisecond.
+      vi.setSystemTime(new Date("2026-11-20T10:00:01Z"));
       await updateSet(db, id, 0, 0, { weight: 70 }, "finished");
     },
   };
@@ -130,7 +134,9 @@ test("pull only asks for rows newer than the last pull", async () => {
   await syncOnce(a, remote);
   expect(asked[0]).toBeUndefined();
   expect(seen).toBeTruthy();
-  expect(asked[2]).toBe(seen);
+  // Final: it asks from a few minutes before the last server time it saw, so a write that
+  // committed late (its server time is when its transaction began) is never skipped.
+  expect(Date.parse(seen!) - Date.parse(asked[2]!)).toBe(5 * 60 * 1000);
 });
 
 test("the retired rotation is never pushed, and cloud rotation rows are ignored", async () => {

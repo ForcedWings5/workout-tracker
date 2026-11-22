@@ -8,6 +8,8 @@ import type { RemoteStore } from "./remote";
 
 type SyncedKind = Extract<Kind, "exercise" | "workout" | "schedule" | "session">;
 
+const PULL_OVERLAP_MS = 5 * 60 * 1000;
+
 /** The synced tables. The retired rotation table is deliberately not here: it's never pushed or pulled. */
 function tables(db: WorkoutDB): Record<SyncedKind, Table<SyncMeta, string>> {
   return {
@@ -25,7 +27,11 @@ export async function syncOnce(db: WorkoutDB, remote: RemoteStore): Promise<{ pu
 
   // Pull: everything the server wrote since last time, by the server's clock.
   const state = (await db.syncState.get("state")) ?? { id: "state" as const };
-  const rows = await remote.pull(state.lastPulledAt);
+  // Ask from a few minutes before the last server time seen: a write's server time is when its
+  // transaction began, so one that committed late could otherwise be skipped for good. Re-pulled
+  // rows are harmless; they aren't newer, so they're not applied again.
+  const since = state.lastPulledAt ? new Date(Date.parse(state.lastPulledAt) - PULL_OVERLAP_MS).toISOString() : undefined;
+  const rows = await remote.pull(since);
   let pulled = 0;
   await db.transaction("rw", all, async () => {
     for (const row of rows) {

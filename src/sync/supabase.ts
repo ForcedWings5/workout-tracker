@@ -23,13 +23,21 @@ export function createSupabaseRemote(supabase: SupabaseClient): RemoteStore {
   return {
     async pull(since) {
       const rows: RemoteRow[] = [];
-      for (let from = 0; ; from += PAGE) {
-        let query = supabase.from("records").select(COLUMNS).order("synced_at", { ascending: true }).range(from, from + PAGE - 1);
+      // Rows pushed together share one server time, so kind and id break ties: without a total
+      // order, a page boundary inside a tie could drop rows. Read until a page comes back empty,
+      // because the project's own row limit can make pages shorter than asked.
+      for (let from = 0; ; ) {
+        let query = supabase.from("records").select(COLUMNS);
         if (since) query = query.gt("synced_at", since);
-        const { data, error } = await query;
+        const { data, error } = await query
+          .order("synced_at", { ascending: true })
+          .order("kind", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
         if (error) throw error;
+        if (!data || data.length === 0) return rows;
         rows.push(...(data as RemoteRow[]));
-        if (data.length < PAGE) return rows;
+        from += data.length;
       }
     },
     async push(rows) {
@@ -59,13 +67,49 @@ export async function verifyCode(email: string, code: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Clears the session on this phone first ("local" scope), so signing out works offline too. */
+export async function signOutWith(supabase: SupabaseClient): Promise<void> {
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (error) throw error;
+}
+
 export async function signOut(): Promise<void> {
-  await getSupabase()?.auth.signOut();
+  const supabase = getSupabase();
+  if (supabase) await signOutWith(supabase);
 }
 
 // ---------- Who's signed in, as a React hook ----------
 
-export type AuthState = { status: "off" | "signed-out" | "signed-in"; email?: string };
+export type AuthState = { status: "off" | "checking" | "signed-out" | "signed-in"; email?: string };
+
+/**
+ * Who's signed in when the app opens. Offline with an expired token, Supabase reports no session
+ * (it can't refresh) but keeps the saved one; that still counts as signed in, and it refreshes once
+ * there's a connection. `stored` is the saved session's raw text, if any.
+ */
+export function initialAuth(session: { user: { email?: string } } | null, stored: string | null): AuthState {
+  if (session) return { status: "signed-in", email: session.user.email };
+  try {
+    const saved = stored ? (JSON.parse(stored) as { user?: { email?: string } }) : null;
+    if (saved?.user) return { status: "signed-in", email: saved.user.email };
+  } catch {
+    // Not a saved session.
+  }
+  return { status: "signed-out" };
+}
+
+/** The saved Supabase session in this app's storage ("sb-<project>-auth-token"), if there is one. */
+function storedSession(): string | null {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && /^sb-.+-auth-token$/.test(key)) return localStorage.getItem(key);
+    }
+  } catch {
+    // Storage unavailable.
+  }
+  return null;
+}
 
 let auth: AuthState = { status: "off" };
 const listeners = new Set<() => void>();
@@ -81,9 +125,11 @@ function watch() {
   watching = true;
   const supabase = getSupabase();
   if (!supabase) return;
-  auth = { status: "signed-out" };
-  supabase.auth.onAuthStateChange((_event, session) => {
-    setAuth(session ? { status: "signed-in", email: session.user.email ?? undefined } : { status: "signed-out" });
+  // Until Supabase reports the saved session, don't claim either way (no nudge flashing on launch).
+  auth = { status: "checking" };
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "INITIAL_SESSION") setAuth(initialAuth(session ? { user: { email: session.user.email ?? undefined } } : null, storedSession()));
+    else setAuth(session ? { status: "signed-in", email: session.user.email ?? undefined } : { status: "signed-out" });
   });
 }
 
