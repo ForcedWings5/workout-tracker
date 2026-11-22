@@ -18,6 +18,8 @@ type Props = {
   deleting?: boolean;
   exerciseName: string;
   onDelete: () => void;
+  /** A delete is still saving: hold off, so the next tap can't point at a row that's about to move. */
+  deleteBusy?: boolean;
 };
 
 export function markStateOf(set: LoggedSet, current: boolean): MarkState {
@@ -26,7 +28,7 @@ export function markStateOf(set: LoggedSet, current: boolean): MarkState {
   return current ? "current" : "suggested";
 }
 
-export function SetRow({ index, set, measure, planned, current, onPatch, onToggle, onSkip, deleting = false, exerciseName, onDelete }: Props) {
+export function SetRow({ index, set, measure, planned, current, onPatch, onToggle, onSkip, deleting = false, exerciseName, onDelete, deleteBusy = false }: Props) {
   const n = index + 1;
   const state = markStateOf(set, current);
   const skipLabel = set.skipped
@@ -36,6 +38,11 @@ export function SetRow({ index, set, measure, planned, current, onPatch, onToggl
       : `Skip set ${n}`;
   const target = targetHint(planned) ?? "–";
   const draft = !set.done;
+  const holdBar = measure === "seconds" && (
+    <div className="hold" aria-hidden="true">
+      <div className="hold__fill" style={{ width: `${holdPercent(set.amount, planned)}%` }} />
+    </div>
+  );
 
   if (deleting) {
     return (
@@ -44,10 +51,11 @@ export function SetRow({ index, set, measure, planned, current, onPatch, onToggl
           <span className="set__n">{n}</span>
           <ReadOnlyNumber value={set.weight} unit="lb" draft={draft} struck={set.skipped} />
           <ReadOnlyNumber value={set.amount} unit={unitFor(measure)} draft={draft} struck={set.skipped} />
-          <button type="button" className="btn btn--plain delete-btn" aria-label={`Delete set ${n} of ${exerciseName}`} onClick={onDelete}>
+          <button type="button" className="btn btn--plain delete-btn" aria-label={`Delete set ${n} of ${exerciseName}`} disabled={deleteBusy} onClick={onDelete}>
             <CircleMinus size={24} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
+        {holdBar}
       </div>
     );
   }
@@ -85,11 +93,7 @@ export function SetRow({ index, set, measure, planned, current, onPatch, onToggl
         />
         <MarkBox state={state} label={setLabel(index, set, measure)} onToggle={onToggle} />
       </div>
-      {measure === "seconds" && (
-        <div className="hold" aria-hidden="true">
-          <div className="hold__fill" style={{ width: `${holdPercent(set.amount, planned)}%` }} />
-        </div>
-      )}
+      {holdBar}
     </div>
   );
 }

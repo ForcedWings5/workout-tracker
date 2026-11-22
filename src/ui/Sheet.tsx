@@ -13,20 +13,23 @@ type Props = {
 export function Sheet({ open, onClose, title, className, children }: Props) {
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
+  // Kept in a ref so a parent re-render (the workout timer ticks every second) doesn't re-run the focus effect.
+  const close = useRef(onClose);
+  close.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     ref.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close.current();
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
       previous?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (

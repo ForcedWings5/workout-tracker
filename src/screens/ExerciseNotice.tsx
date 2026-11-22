@@ -22,6 +22,8 @@ type Props = {
   deleting?: boolean;
   onDeleteSet: (setIndex: number) => void;
   onRemove: () => void;
+  /** A delete is still saving. */
+  deleteBusy?: boolean;
 };
 
 export function ExerciseNotice({
@@ -38,6 +40,7 @@ export function ExerciseNotice({
   deleting = false,
   onDeleteSet,
   onRemove,
+  deleteBusy = false,
 }: Props) {
   return (
     <Notice aria-label={name} className="exercise">
@@ -45,7 +48,7 @@ export function ExerciseNotice({
         <h2 className="exercise__name">{name}</h2>
         <span className="exercise__target">{formatTarget(entry.planned, measure)}</span>
         {deleting && (
-          <button type="button" className="btn btn--plain delete-btn" aria-label={`Remove ${name} from today`} onClick={onRemove}>
+          <button type="button" className="btn btn--plain delete-btn" aria-label={`Remove ${name} from today`} disabled={deleteBusy} onClick={onRemove}>
             <CircleMinus size={24} strokeWidth={2} aria-hidden="true" />
           </button>
         )}
@@ -72,6 +75,7 @@ export function ExerciseNotice({
             deleting={deleting}
             exerciseName={name}
             onDelete={() => onDeleteSet(i)}
+            deleteBusy={deleteBusy}
           />
         ))}
       </div>

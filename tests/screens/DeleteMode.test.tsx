@@ -5,6 +5,7 @@ import { DbProvider } from "../../src/storage/DbContext";
 import type { WorkoutDB } from "../../src/storage/db";
 import { addExerciseToSession, startEmptyWorkout, startWorkout, updateSet } from "../../src/storage/repo";
 import { seedExerciseId } from "../../src/storage/seed";
+import { SetRow } from "../../src/screens/SetRow";
 import { seededDb } from "./helpers";
 
 const UPPER_A = "seed-workout-upper-a";
@@ -38,8 +39,8 @@ const benchSets = async (id: string) => (await db.sessions.get(id))!.entries[0].
 
 test("the corner button turns delete mode on and Done turns it off", async () => {
   const { user } = await deleteMode();
-  expect(screen.getByText("Tap a set or exercise to delete it.")).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Done" }));
+  expect(screen.getByRole("status")).toHaveTextContent("Tap a set or exercise to delete it.");
+  await user.click(screen.getByRole("button", { name: "Done deleting" }));
   expect(screen.queryByText("Tap a set or exercise to delete it.")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Delete sets or exercises" })).toBeInTheDocument();
 });
@@ -65,7 +66,7 @@ test("deleting a set asks first, then removes it", async () => {
   await waitFor(async () => expect(await benchSets(id)).toHaveLength(3));
   expect((await benchSets(id)).some((s) => s.done)).toBe(false);
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Done deleting" })).toBeInTheDocument();
 });
 
 test("Keep set deletes nothing", async () => {
@@ -96,7 +97,7 @@ test("removing the last exercise shows the empty state", async () => {
   await user.click(await screen.findByRole("button", { name: "Remove Barbell Bench Press from today" }));
   await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove exercise" }));
   expect(await screen.findByText(/No exercises yet/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Done deleting" })).toBeInTheDocument();
 });
 
 test("delete mode starts off when the screen opens again", async () => {
@@ -113,4 +114,71 @@ test("Final: a one-off workout's name field is inert in delete mode", async () =
   renderLog(id);
   await user.click(await screen.findByRole("button", { name: "Delete sets or exercises" }));
   expect(screen.getByLabelText("Workout name")).toBeDisabled();
+});
+
+test("the corner button keeps focus as it switches, and says Done deleting", async () => {
+  const { user } = await deleteMode();
+  expect(screen.getByRole("button", { name: "Done deleting" })).toHaveFocus();
+  await user.click(screen.getByRole("button", { name: "Done deleting" }));
+  expect(screen.getByRole("button", { name: "Delete sets or exercises" })).toHaveFocus();
+});
+
+test("the hint is announced through a status that is always there", async () => {
+  const id = await startWorkout(db, UPPER_A);
+  const user = userEvent.setup();
+  renderLog(id);
+  const status = await screen.findByRole("status");
+  expect(status).toHaveTextContent("");
+  await user.click(screen.getByRole("button", { name: "Delete sets or exercises" }));
+  expect(screen.getByRole("status")).toBe(status);
+  expect(status).toHaveTextContent("Tap a set or exercise to delete it.");
+});
+
+test("a timed set keeps its hold bar in delete mode, so the row doesn't shrink", () => {
+  const { container } = render(
+    <SetRow
+      index={0}
+      set={{ weight: undefined, amount: 30, done: true }}
+      measure="seconds"
+      planned={{ sets: 2, targetMin: 45 }}
+      current={false}
+      onPatch={() => {}}
+      onToggle={() => {}}
+      onSkip={() => {}}
+      deleting
+      exerciseName="Plank"
+      onDelete={() => {}}
+    />,
+  );
+  expect(container.querySelector(".hold__fill")).not.toBeNull();
+});
+
+test("Escape closes the set sheet and deletes nothing", async () => {
+  const { id, user } = await deleteMode();
+  await user.click(screen.getByRole("button", { name: "Delete set 2 of Barbell Bench Press" }));
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(await benchSets(id)).toHaveLength(4);
+});
+
+test("tapping outside the sheet closes it and deletes nothing", async () => {
+  const { id, user } = await deleteMode();
+  await user.click(screen.getByRole("button", { name: "Remove Barbell Bench Press from today" }));
+  await user.click(document.querySelector(".sheet-scrim")!);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect((await db.sessions.get(id))!.entries[0].exerciseId).toBe(BENCH);
+});
+
+test("Keep on the exercise sheet removes nothing", async () => {
+  const { id, user } = await deleteMode();
+  await user.click(screen.getByRole("button", { name: "Remove Barbell Bench Press from today" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Keep" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect((await db.sessions.get(id))!.entries[0].exerciseId).toBe(BENCH);
+});
+
+test("a blank set is described as bodyweight", async () => {
+  const { user } = await deleteMode();
+  await user.click(screen.getByRole("button", { name: "Delete set 1 of Barbell Bench Press" }));
+  expect(within(screen.getByRole("dialog")).getByText("Barbell Bench Press · Bodyweight.")).toBeInTheDocument();
 });

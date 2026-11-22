@@ -89,9 +89,14 @@ export function LogWorkout({ sessionId, onClose }: Props) {
   const [picking, setPicking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pending, setPending] = useState<PendingDelete>();
+  /** A confirmed delete hasn't reached the screen yet. */
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const scrollNext = useRef(false);
   const session = state?.session;
   const elapsed = useElapsed(sessionId, !fulfilled);
+
+  // The confirmed delete has landed (or anything else changed the session): delete buttons are safe again.
+  useEffect(() => setDeleteBusy(false), [session]);
 
   // The session was discarded elsewhere: go back.
   useEffect(() => {
@@ -147,26 +152,28 @@ export function LogWorkout({ sessionId, onClose }: Props) {
             <span className="log__timer" aria-label={`Elapsed ${formatElapsed(elapsed)}`}>
               {formatElapsed(elapsed)}
             </span>
-            {deleting ? (
-              <button type="button" className="btn btn--text-board" onClick={() => setDeleting(false)}>
-                Done
-              </button>
-            ) : (
-              <button type="button" className="btn btn--text-board log__trash" aria-label="Delete sets or exercises" onClick={() => setDeleting(true)}>
-                <Trash2 size={22} strokeWidth={2} aria-hidden="true" />
-              </button>
-            )}
+            {/* One button for both states, so focus stays on it as it switches. */}
+            <button
+              type="button"
+              className={deleting ? "btn btn--text-board" : "btn btn--text-board log__trash"}
+              aria-label={deleting ? "Done deleting" : "Delete sets or exercises"}
+              onClick={() => setDeleting(!deleting)}
+            >
+              {deleting ? "Done" : <Trash2 size={22} strokeWidth={2} aria-hidden="true" />}
+            </button>
           </div>
         }
         title={title}
         subtitle={headerSubtitle}
       />
 
+      {/* Always mounted, so screen readers announce the hint when it appears. */}
+      <p className="visually-hidden" role="status">
+        {deleting ? "Tap a set or exercise to delete it." : ""}
+      </p>
       {deleting && (
-        <Notice>
-          <p className="empty-text" role="status">
-            Tap a set or exercise to delete it.
-          </p>
+        <Notice aria-hidden="true">
+          <p className="empty-text">Tap a set or exercise to delete it.</p>
         </Notice>
       )}
 
@@ -200,6 +207,7 @@ export function LogWorkout({ sessionId, onClose }: Props) {
             deleting={deleting}
             onDeleteSet={(s) => setPending({ kind: "set", entry: i, set: s, exerciseId: entry.exerciseId })}
             onRemove={() => setPending({ kind: "entry", entry: i, exerciseId: entry.exerciseId })}
+            deleteBusy={deleteBusy}
           />
         );
       })}
@@ -233,7 +241,14 @@ export function LogWorkout({ sessionId, onClose }: Props) {
         onKeep={() => setPending(undefined)}
         onConfirm={(p) => {
           setPending(undefined);
-          run(p.kind === "set" ? deleteSessionSet(db, sessionId, p.entry, p.set, p.exerciseId) : removeSessionEntry(db, sessionId, p.entry, p.exerciseId));
+          setDeleteBusy(true);
+          const write = p.kind === "set" ? deleteSessionSet(db, sessionId, p.entry, p.set, p.exerciseId) : removeSessionEntry(db, sessionId, p.entry, p.exerciseId);
+          run(
+            write.catch((err: unknown) => {
+              setDeleteBusy(false);
+              throw err;
+            }),
+          );
         }}
       />
 
