@@ -1,11 +1,12 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useState } from "react";
-import { shortDate, todayLocal } from "../logic/clock";
+import { useState } from "react";
+import { shortDate } from "../logic/clock";
 import { splitWorkoutName } from "../logic/input";
 import { addDays, WEEKDAYS, weekdayOf, type TodayPlan } from "../logic/schedule";
 import { sessionProgress } from "../logic/session";
 import type { Session, Workout } from "../logic/types";
 import { useDb } from "../storage/DbContext";
+import { useToday } from "../ui/useToday";
 import { discardWorkout, loadTodayState, startEmptyWorkout, startWorkout } from "../storage/repo";
 import { Button } from "../ui/Button";
 import { Notice } from "../ui/Notice";
@@ -16,23 +17,6 @@ type Props = { onOpenLog: (sessionId: string) => void };
 
 function exerciseCount(w: Workout): string {
   return `${w.exercises.length} ${w.exercises.length === 1 ? "exercise" : "exercises"}`;
-}
-
-/** Today's local date, re-read whenever the app comes back to the foreground (it may have been open past midnight). */
-function useToday(): string {
-  const [today, setToday] = useState(todayLocal);
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === "visible") setToday(todayLocal());
-    };
-    document.addEventListener("visibilitychange", refresh);
-    window.addEventListener("focus", refresh);
-    return () => {
-      document.removeEventListener("visibilitychange", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
-  return today;
 }
 
 const titleOf = (w?: Workout) => (w ? splitWorkoutName(w.name).title : "Workout");
@@ -68,7 +52,8 @@ export function Today({ onOpenLog }: Props) {
   const byId = new Map(workouts.map((w) => [w.id, w]));
   const todays = plan.today ? byId.get(plan.today.workoutId) : undefined;
   const todo = plan.today?.status === "todo" ? todays : undefined;
-  const missed = plan.missed[0];
+  // Today's own workout already has a Start button, so the reminder skips it (it can be scheduled twice a week).
+  const missed = plan.missed.find((m) => m.workoutId !== todo?.id);
   const missedWorkout = missed ? byId.get(missed.workoutId) : undefined;
   // Every workout without its own start button above stays one tap away.
   const others = workouts.filter((w) => w.id !== todo?.id && w.id !== missedWorkout?.id);

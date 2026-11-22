@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { WorkoutDB } from "../../src/storage/db";
 import { addExerciseToSession, finishWorkout, startEmptyWorkout, startWorkout, updateSet } from "../../src/storage/repo";
@@ -89,4 +89,47 @@ test("with no history the calendar still shows, above the empty state", async ()
 test("today is outlined", async () => {
   await openProgress();
   expect(screen.getByRole("button", { name: /^Friday, November 20/ })).toHaveClass("calendar__day--today");
+});
+
+test("opening an exercise from Progress and coming back keeps the calendar's month and day", async () => {
+  await finishUpperA(16);
+  const user = await openProgress();
+  await user.click(screen.getByRole("button", { name: "Previous month" }));
+  await user.click(screen.getByRole("button", { name: "Next month" }));
+  await user.click(screen.getByRole("button", { name: "Monday, November 16, Upper A" }));
+  await user.click(screen.getByRole("button", { name: /^Barbell Bench Press/ }));
+  await screen.findByRole("heading", { level: 1, name: "Barbell Bench Press" });
+  await user.click(screen.getAllByRole("button", { name: "Progress" })[0]);
+  expect(await screen.findByRole("button", { name: "Upper A · 1 set" })).toBeInTheDocument();
+});
+
+test("two workouts on the same day keep their order when one is edited", async () => {
+  at(16);
+  const lower = await startWorkout(db, "seed-workout-lower-a");
+  await updateSet(db, lower, 0, 0, { weight: 135, amount: 5, done: true });
+  await finishWorkout(db, lower);
+  await finishUpperA(16);
+  const user = await openProgress();
+  await user.click(screen.getByRole("button", { name: /^Monday, November 16/ }));
+  const order = () => screen.getAllByRole("button", { name: /· \d+ sets?$/ }).map((b) => b.textContent);
+  const before = order();
+  await updateSet(db, lower, 0, 0, { weight: 140 }, "finished");
+  await new Promise((r) => setTimeout(r, 50));
+  expect(order()).toEqual(before);
+  expect(before).toEqual(["Lower A · 1 set", "Upper A · 1 set"]);
+});
+
+test("Progress moves its today outline to the new day when the app comes back after midnight", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 20, 23, 59));
+  const user = userEvent.setup();
+  renderApp(db);
+  await user.click(await screen.findByRole("button", { name: "Progress" }));
+  expect(await screen.findByRole("button", { name: /^Friday, November 20/ })).toHaveClass("calendar__day--today");
+  vi.setSystemTime(new Date(2026, 10, 21, 0, 5));
+  Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await waitFor(() => expect(screen.getByRole("button", { name: /^Saturday, November 21/ })).toHaveClass("calendar__day--today"));
 });

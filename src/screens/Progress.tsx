@@ -1,10 +1,11 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { ChevronRight } from "lucide-react";
-import { shortDate, todayLocal } from "../logic/clock";
+import { shortDate } from "../logic/clock";
 import { useDb } from "../storage/DbContext";
 import { loadMonthSessions, loadProgressList } from "../storage/repo";
 import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
+import { useToday } from "../ui/useToday";
 import { HistoryCalendar, type CalendarState } from "./HistoryCalendar";
 
 type Props = {
@@ -18,7 +19,7 @@ type Props = {
 /** The history calendar, then every exercise you've logged, most recently done first. */
 export function Progress({ onOpen, calendar, onCalendar, onOpenSession }: Props) {
   const db = useDb();
-  const today = todayLocal();
+  const today = useToday();
   const [y, m] = today.split("-").map(Number);
   const month = calendar ?? { year: y, month: m };
   const list = useLiveQuery(() => loadProgressList(db), [db]);

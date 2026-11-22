@@ -44,11 +44,16 @@ export default function App() {
         <main>
           <ExerciseHistory
             exerciseId={exerciseId}
-            onBack={() => setView({ tab: "progress" })}
+            onBack={() => setView({ tab: "progress", calendar: view.calendar })}
             onOpenSession={(sessionId, exerciseName) =>
               setView({
                 tab: "progress",
-                overlay: { kind: "pastSession", sessionId, backLabel: exerciseName, returnTo: { tab: "progress", overlay: { kind: "exercise", exerciseId } } },
+                overlay: {
+                  kind: "pastSession",
+                  sessionId,
+                  backLabel: exerciseName,
+                  returnTo: { tab: "progress", overlay: { kind: "exercise", exerciseId }, calendar: view.calendar },
+                },
               })
             }
           />
@@ -77,7 +82,7 @@ export default function App() {
           <Today onOpenLog={(sessionId) => setView({ tab: "today", overlay: { kind: "log", sessionId } })} />
         ) : view.tab === "progress" ? (
           <Progress
-            onOpen={(exerciseId) => setView({ tab: "progress", overlay: { kind: "exercise", exerciseId } })}
+            onOpen={(exerciseId) => setView({ tab: "progress", overlay: { kind: "exercise", exerciseId }, calendar: view.calendar })}
             calendar={view.calendar}
             onCalendar={(calendar) => setView({ tab: "progress", calendar })}
             onOpenSession={(sessionId) =>

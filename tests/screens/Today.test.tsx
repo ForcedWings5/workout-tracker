@@ -151,3 +151,12 @@ test("with nothing scheduled, Today says where to set the week", async () => {
   expect(await screen.findByText("No workouts scheduled. Set your week on the Workouts tab.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^Upper A/ })).toBeInTheDocument();
 });
+
+test("a workout on two days doesn't get two buttons when its first day was missed", async () => {
+  await setScheduleDay(db, 3, UPPER_A); // Thursday is Upper A too
+  at(2026, 11, 19);
+  renderApp(db);
+  expect(await screen.findByRole("region", { name: "Today: Upper A" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Do Upper A instead" })).not.toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Missed Tuesday: Lower A" })).toBeInTheDocument();
+});

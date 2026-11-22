@@ -838,3 +838,15 @@ button.set__n::before {
   margin-left: auto;
   color: var(--ink);
 }
+
+/* On the narrowest screens (320pt), the calendar uses the full width so every day stays a 44px target. */
+@media (max-width: 359px) {
+  .calendar {
+    margin-inline: 0;
+    padding-inline: var(--space-1);
+  }
+
+  .calendar__head {
+    margin-inline: 0;
+  }
+}

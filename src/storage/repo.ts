@@ -221,7 +221,7 @@ export async function discardWorkout(db: WorkoutDB, sessionId: string): Promise<
 /** Moves a past session to another day. Refuses anything that isn't a real YYYY-MM-DD date. */
 export async function setSessionDate(db: WorkoutDB, sessionId: string, date: string): Promise<void> {
   if (!isLocalDate(date)) throw new Error("Pick a date");
-  // A future date would make this the newest session for good: next up, pre-fill and notes would follow it.
+  // A future date would make this the newest session for good: the week, pre-fill and notes would follow it.
   if (date > todayLocal()) throw new Error("Pick today or an earlier day");
   await mutateSession(db, sessionId, (s) => void (s.date = date), "finished");
 }
@@ -370,7 +370,7 @@ export async function loadEditWorkout(db: WorkoutDB, id: string): Promise<EditWo
 
 // ---------- One-off workouts and the exercise picker ----------
 
-/** A one-off workout: no workoutId, so it never moves next up. */
+/** A one-off workout: no workoutId, so it never counts toward the week. */
 export async function startEmptyWorkout(db: WorkoutDB): Promise<string> {
   return db.transaction("rw", db.sessions, async () => {
     const sessions = live(await db.sessions.toArray());
@@ -501,12 +501,12 @@ export async function markExported(db: WorkoutDB): Promise<void> {
 /** A finished workout as the history calendar lists it. */
 export type DaySession = { id: string; title: string; doneSets: number };
 
-/** Finished sessions in a month (1–12), by date, one-offs included, oldest first within a day. */
+/** Finished sessions in a month (1–12), by date, one-offs included. Within a day they're in title order, which editing can't change. */
 export async function loadMonthSessions(db: WorkoutDB, year: number, month: number): Promise<Record<string, DaySession[]>> {
   const prefix = `${year}-${String(month).padStart(2, "0")}-`;
   const sessions = live(await db.sessions.where("date").startsWith(prefix).toArray())
     .filter((s) => s.status === "finished")
-    .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+    .sort((a, b) => a.workoutName.localeCompare(b.workoutName) || a.id.localeCompare(b.id));
   const byDate: Record<string, DaySession[]> = {};
   for (const s of sessions) {
     const doneSets = s.entries.reduce((n, e) => n + e.sets.filter((set) => set.done).length, 0);

@@ -25,7 +25,7 @@ export const SEED_SCHEDULE: (string | null)[] = [SEED_WORKOUT_IDS[0], SEED_WORKO
 
 type SeedLine = { name: string; sets: number; min: number; max?: number; label?: string; measure?: Measure };
 
-// The spec's Seed data section, in rotation order.
+// The spec's Seed data section, in the order of the owner's week.
 const SEED: { id: string; name: string; lines: SeedLine[] }[] = [
   {
     id: "seed-workout-upper-a",
