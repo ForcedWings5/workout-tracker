@@ -656,3 +656,28 @@ button.set__n::before {
   line-height: 20px;
   color: var(--ink-2);
 }
+
+/* ---------- Today: the week ---------- */
+
+.contract__done {
+  margin-top: var(--space-3);
+}
+
+.contract__done-status {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.missed {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.missed__text {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}

@@ -1,7 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
-import { shortDate } from "../logic/clock";
+import { useEffect, useState } from "react";
+import { shortDate, todayLocal } from "../logic/clock";
 import { splitWorkoutName } from "../logic/input";
+import { addDays, WEEKDAYS, weekdayOf, type TodayPlan } from "../logic/schedule";
 import { sessionProgress } from "../logic/session";
 import type { Session, Workout } from "../logic/types";
 import { useDb } from "../storage/DbContext";
@@ -17,9 +18,36 @@ function exerciseCount(w: Workout): string {
   return `${w.exercises.length} ${w.exercises.length === 1 ? "exercise" : "exercises"}`;
 }
 
+/** Today's local date, re-read whenever the app comes back to the foreground (it may have been open past midnight). */
+function useToday(): string {
+  const [today, setToday] = useState(todayLocal);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") setToday(todayLocal());
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  return today;
+}
+
+const titleOf = (w?: Workout) => (w ? splitWorkoutName(w.name).title : "Workout");
+
+/** "Next: Upper B, Thursday", or "tomorrow" when it is. */
+function nextLine(plan: TodayPlan, today: string, byId: Map<string, Workout>): string | undefined {
+  if (!plan.next) return undefined;
+  const when = plan.next.date === addDays(today, 1) ? "tomorrow" : WEEKDAYS[weekdayOf(plan.next.date)];
+  return `Next: ${titleOf(byId.get(plan.next.workoutId))}, ${when}`;
+}
+
 export function Today({ onOpenLog }: Props) {
   const db = useDb();
-  const state = useLiveQuery(() => loadTodayState(db), [db]);
+  const today = useToday();
+  const state = useLiveQuery(() => loadTodayState(db, today), [db, today]);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [starting, setStarting] = useState(false);
 
@@ -36,9 +64,15 @@ export function Today({ onOpenLog }: Props) {
 
   if (!state) return <ScreenHeader title="Today" />;
 
-  const { inProgress, workouts, nextUpId, lastDateByWorkout } = state;
-  const nextUp = workouts.find((w) => w.id === nextUpId);
-  const others = workouts.filter((w) => w.id !== nextUp?.id);
+  const { inProgress, workouts, plan, lastDateByWorkout } = state;
+  const byId = new Map(workouts.map((w) => [w.id, w]));
+  const todays = plan.today ? byId.get(plan.today.workoutId) : undefined;
+  const todo = plan.today?.status === "todo" ? todays : undefined;
+  const missed = plan.missed[0];
+  const missedWorkout = missed ? byId.get(missed.workoutId) : undefined;
+  // Every workout without its own start button above stays one tap away.
+  const others = workouts.filter((w) => w.id !== todo?.id && w.id !== missedWorkout?.id);
+  const next = nextLine(plan, today, byId);
 
   return (
     <>
@@ -46,11 +80,39 @@ export function Today({ onOpenLog }: Props) {
 
       {inProgress ? (
         <InProgress session={inProgress} onResume={() => onOpenLog(inProgress.id)} onDiscard={() => setConfirmDiscard(true)} />
-      ) : nextUp ? (
-        <NextUp workout={nextUp} lastDate={lastDateByWorkout[nextUp.id]} starting={starting} onStart={() => start(nextUp.id)} />
+      ) : todays && plan.today ? (
+        <TodayNotice
+          workout={todays}
+          weekday={WEEKDAYS[plan.weekday]}
+          status={plan.today.status}
+          doneOn={plan.today.doneOn}
+          next={next}
+          lastDate={lastDateByWorkout[todays.id]}
+          starting={starting}
+          onStart={() => start(todays.id)}
+        />
+      ) : plan.next ? (
+        <Notice aria-label="Rest day">
+          <p className="contract__meta">{WEEKDAYS[plan.weekday]}</p>
+          <h2 className="contract__title">Rest day</h2>
+          <p className="contract__subtitle">{next}</p>
+        </Notice>
       ) : (
         <Notice>
-          <p className="empty-text">No workouts yet. Add one under Workouts and it shows up here.</p>
+          <p className="empty-text">
+            {workouts.length === 0 ? "No workouts yet. Add one under Workouts and it shows up here." : "No workouts scheduled. Set your week on the Workouts tab."}
+          </p>
+        </Notice>
+      )}
+
+      {!inProgress && missed && missedWorkout && (
+        <Notice aria-label={`Missed ${WEEKDAYS[weekdayOf(missed.date)]}: ${titleOf(missedWorkout)}`} className="missed">
+          <p className="missed__text">
+            Missed {WEEKDAYS[weekdayOf(missed.date)]}: {titleOf(missedWorkout)}
+          </p>
+          <Button variant={todo ? "outline" : "primary"} onClick={() => start(missedWorkout.id)} disabled={starting}>
+            Do {titleOf(missedWorkout)} instead
+          </Button>
         </Notice>
       )}
 
@@ -105,28 +167,51 @@ export function Today({ onOpenLog }: Props) {
   );
 }
 
-function NextUp({ workout, lastDate, starting, onStart }: { workout: Workout; lastDate?: string; starting: boolean; onStart: () => void }) {
+type TodayNoticeProps = {
+  workout: Workout;
+  weekday: string;
+  status: "todo" | "doneToday" | "doneThisWeek";
+  doneOn?: string;
+  next?: string;
+  lastDate?: string;
+  starting: boolean;
+  onStart: () => void;
+};
+
+/** Today's scheduled workout: ready to start, or already done with what's next. */
+function TodayNotice({ workout, weekday, status, doneOn, next, lastDate, starting, onStart }: TodayNoticeProps) {
   const { title, subtitle } = splitWorkoutName(workout.name);
   return (
-    <Notice aria-label={`Next up: ${title}`}>
+    <Notice aria-label={`Today: ${title}`}>
       <p className="contract__meta">
-        <span>Next up</span>
-        {" · "}
-        <span>{exerciseCount(workout)}</span>
-        {lastDate && (
+        <span>Today · {weekday}</span>
+        {status === "todo" && (
           <>
             {" · "}
-            <span>last {shortDate(lastDate)}</span>
+            <span>{exerciseCount(workout)}</span>
+            {lastDate && (
+              <>
+                {" · "}
+                <span>last {shortDate(lastDate)}</span>
+              </>
+            )}
           </>
         )}
       </p>
       <h2 className="contract__title">{title}</h2>
       {subtitle && <p className="contract__subtitle">{subtitle}</p>}
-      <div className="contract__action">
-        <Button variant="primary" onClick={onStart} loading={starting} loadingLabel="Starting…">
-          Start workout
-        </Button>
-      </div>
+      {status === "todo" ? (
+        <div className="contract__action">
+          <Button variant="primary" onClick={onStart} loading={starting} loadingLabel="Starting…">
+            Start workout
+          </Button>
+        </div>
+      ) : (
+        <div className="contract__done">
+          <p className="contract__done-status">{status === "doneToday" ? "Done today" : `Done this week (${WEEKDAYS[weekdayOf(doneOn!)]})`}</p>
+          {next && <p className="contract__subtitle">{next}</p>}
+        </div>
+      )}
     </Notice>
   );
 }
