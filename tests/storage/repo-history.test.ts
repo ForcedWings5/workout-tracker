@@ -41,3 +41,13 @@ test("deleteSession leaves a tombstone so it syncs", async () => {
   await deleteSession(db, id);
   expect(await db.sessions.get(id)).toMatchObject({ deleted: true, dirty: 1 });
 });
+
+test("Final: setSessionDate refuses a day after today", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-20T15:00:00Z"));
+  const id = await finished();
+  await expect(setSessionDate(db, id, "2026-11-21")).rejects.toThrow("Pick today or an earlier day");
+  await setSessionDate(db, id, "2026-11-20");
+  expect((await db.sessions.get(id))!.date).toBe("2026-11-20");
+  vi.useRealTimers();
+});

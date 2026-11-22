@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState } from "react";
-import { shortDate } from "../logic/clock";
+import { shortDate, todayLocal } from "../logic/clock";
 import { describeSet, formatElapsed } from "../logic/format";
 import { splitWorkoutName } from "../logic/input";
 import { recordSets } from "../logic/progress";
@@ -110,7 +110,8 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
   /** Every write says which kind of session it's for, so a past session is only changed from history. */
   const status: SessionStatus = editing ? "finished" : "in_progress";
   const elapsed = useElapsed(sessionId, !editing && !fulfilled, !editing);
-  const [confirmDeleteSession, setConfirmDeleteSession] = useState(false);
+  /** The delete-session sheet, opened from "Delete session" or by leaving a past session with nothing ticked. */
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState<"asked" | "empty">();
 
   // The confirmed delete has landed (or anything else changed the session): delete buttons are safe again.
   useEffect(() => setDeleteBusy(false), [session]);
@@ -134,6 +135,13 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
   const current = currentSetOf(session);
   const progress = sessionProgress(session);
   const records = recordSets(session, state.exercises, state.sessions);
+
+  // A past session with no ticked sets drops out of every history list, so it could never be
+  // opened again. Leaving it asks to delete it instead.
+  const close = () => {
+    if (editing && progress.done === 0) setConfirmDeleteSession("empty");
+    else onClose();
+  };
 
   if (fulfilled) return <Fulfilled session={session} names={state.exercises} onDone={onClose} />;
 
@@ -164,7 +172,7 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
   return (
     <div className="log">
       <ScreenHeader
-        back={{ label: backLabel, onClick: onClose }}
+        back={{ label: backLabel, onClick: close }}
         right={
           <div className="log__corner">
             {!editing && (
@@ -209,6 +217,7 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
                 className="field"
                 type="date"
                 value={session.date}
+                max={todayLocal()}
                 disabled={deleting}
                 onChange={(e) => run(setSessionDate(db, sessionId, e.target.value))}
               />
@@ -243,6 +252,7 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
             onDeleteSet={(s) => setPending({ kind: "set", entry: i, set: s, exerciseId: entry.exerciseId })}
             onRemove={() => setPending({ kind: "entry", entry: i, exerciseId: entry.exerciseId })}
             deleteBusy={deleteBusy}
+            scope={editing ? "this session" : "today"}
           />
         );
       })}
@@ -252,7 +262,7 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
           Add exercise
         </Button>
         {editing && (
-          <Button variant="text-board" disabled={deleting} onClick={() => setConfirmDeleteSession(true)}>
+          <Button variant="text-board" disabled={deleting} onClick={() => setConfirmDeleteSession("asked")}>
             Delete session
           </Button>
         )}
@@ -270,7 +280,7 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
       <div className="fulfill-spacer" />
       <div className="fulfill-bar">
         {editing ? (
-          <Button variant="primary" disabled={deleting} onClick={onClose}>
+          <Button variant="primary" disabled={deleting} onClick={close}>
             Done
           </Button>
         ) : (
@@ -302,17 +312,21 @@ export function LogWorkout({ sessionId, onClose, mode = "live", backLabel = "Tod
         }}
       />
 
-      <Sheet open={confirmDeleteSession} onClose={() => setConfirmDeleteSession(false)} title="Delete this session?">
-        <p className="sheet__body">Its sets come out of your history. This can't be undone.</p>
+      <Sheet open={confirmDeleteSession !== undefined} onClose={() => setConfirmDeleteSession(undefined)} title="Delete this session?">
+        <p className="sheet__body">
+          {confirmDeleteSession === "empty"
+            ? "Nothing in it is ticked, so it won't show in your history. Delete it, or keep editing and tick the sets you did."
+            : "Its sets come out of your history. This can't be undone."}
+        </p>
         <div className="sheet__actions">
-          <Button variant="outline" onClick={() => setConfirmDeleteSession(false)}>
-            Keep session
+          <Button variant="outline" onClick={() => setConfirmDeleteSession(undefined)}>
+            {confirmDeleteSession === "empty" ? "Keep editing" : "Keep session"}
           </Button>
           <Button
             variant="plain"
             onClick={async () => {
               await deleteSession(db, sessionId);
-              setConfirmDeleteSession(false);
+              setConfirmDeleteSession(undefined);
               onClose();
             }}
           >

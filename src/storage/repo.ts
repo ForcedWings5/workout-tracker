@@ -200,6 +200,8 @@ export async function discardWorkout(db: WorkoutDB, sessionId: string): Promise<
 /** Moves a past session to another day. Refuses anything that isn't a real YYYY-MM-DD date. */
 export async function setSessionDate(db: WorkoutDB, sessionId: string, date: string): Promise<void> {
   if (!isLocalDate(date)) throw new Error("Pick a date");
+  // A future date would make this the newest session for good: next up, pre-fill and notes would follow it.
+  if (date > todayLocal()) throw new Error("Pick today or an earlier day");
   await mutateSession(db, sessionId, (s) => void (s.date = date), "finished");
 }
 

@@ -46,7 +46,7 @@ test("moving Lower A up makes it first in the rotation", async () => {
   const user = await openWorkouts();
   await user.click(await screen.findByRole("button", { name: "Move Lower A up" }));
   await waitFor(async () => expect((await db.rotation.get("rotation"))?.workoutIds[0]).toBe(LOWER_A));
-  expect(screen.getByRole("button", { name: "Move Lower A up" })).toBeDisabled();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Move Lower A up" })).toBeDisabled());
 });
 
 test("changing bench sets to 5 and leaving the field saves it", async () => {
@@ -107,6 +107,8 @@ test("moving and removing exercises changes only the workout", async () => {
   const user = await openEditor("Upper A");
   await user.click(screen.getByRole("button", { name: "Move Barbell Bench Press down" }));
   await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.exercises[1].exerciseId).toBe(BENCH));
+  // Wait for the moved order on screen, so the click lands on the redrawn notice.
+  await waitFor(() => expect(screen.getAllByRole("region")[2]).toHaveAccessibleName("Barbell Bench Press"));
   await user.click(screen.getByRole("button", { name: "Edit Barbell Bench Press" }));
   await user.click(screen.getByRole("button", { name: "Remove Barbell Bench Press" }));
   await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.exercises.map((p) => p.exerciseId)).not.toContain(BENCH));
@@ -138,7 +140,8 @@ test("Final #1: deleting a name one character at a time and leaving puts the old
   const name = within(bench).getByLabelText("Exercise name");
   await user.click(name);
   await user.keyboard("{End}" + "{Backspace}".repeat("Barbell Bench Press".length));
-  expect(within(bench).getByRole("alert")).toHaveTextContent("Give the exercise a name");
+  // The message appears once the refused save settles, a moment after the last keystroke.
+  expect(await within(bench).findByRole("alert")).toHaveTextContent("Give the exercise a name");
   await user.tab();
   await waitFor(async () => expect((await db.exercises.get(BENCH))?.name).toBe("Barbell Bench Press"));
   expect(within(bench).getByLabelText("Exercise name")).toHaveValue("Barbell Bench Press");

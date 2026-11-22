@@ -139,3 +139,32 @@ test("a set that beats every earlier one shows Record, in the session where it h
   const rows = bench.querySelectorAll(".set");
   expect(rows[3]).toHaveTextContent("Record");
 });
+
+test("Final: closing a past session with nothing ticked asks to delete it, since it can't be found again", async () => {
+  const id = await benchHistory();
+  const user = await openBench();
+  await user.click(screen.getAllByRole("button", { name: /^11\/12 · / })[0]);
+  await user.click(await screen.findByRole("button", { name: "Delete sets or exercises" }));
+  await user.click(screen.getByRole("button", { name: "Remove Barbell Bench Press from this session" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove exercise" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Barbell Bench Press" })).not.toBeInTheDocument());
+  await user.click(screen.getByRole("button", { name: "Done deleting" }));
+  await user.click(screen.getByRole("button", { name: "Done" }));
+  const sheet = await screen.findByRole("dialog", { name: "Delete this session?" });
+  expect(within(sheet).getByText(/Nothing in it is ticked/)).toBeInTheDocument();
+  await user.click(within(sheet).getByRole("button", { name: "Keep editing" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect((await db.sessions.get(id))?.deleted).toBe(false);
+  await user.click(screen.getByRole("button", { name: "Barbell Bench Press" }));
+  await user.click(within(await screen.findByRole("dialog", { name: "Delete this session?" })).getByRole("button", { name: "Delete session" }));
+  await screen.findByRole("heading", { level: 1, name: "Barbell Bench Press" });
+  expect((await db.sessions.get(id))?.deleted).toBe(true);
+});
+
+test("Final: the date field doesn't offer days after today", async () => {
+  await benchHistory();
+  const user = await openBench();
+  await user.click(screen.getAllByRole("button", { name: /^11\/12 · / })[0]);
+  const { todayLocal } = await import("../../src/logic/clock");
+  expect(await screen.findByLabelText("Date")).toHaveAttribute("max", todayLocal());
+});
