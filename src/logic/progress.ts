@@ -83,7 +83,11 @@ export function isRecordSet(exercise: Exercise, set: LoggedSet, history: Session
   return value !== undefined && value > Math.max(...points.map((p) => p.value));
 }
 
-/** Exercises with at least one done set in a finished session, most recently done first. */
+/**
+ * Exercises with at least one done set in a finished session, most recently done first.
+ * An archived exercise (deleted while it had history) is left out; its sessions keep their sets,
+ * and creating an exercise with the same name brings it back.
+ */
 export function exercisesByRecency(exercises: Exercise[], sessions: Session[]): { exercise: Exercise; lastDate: string }[] {
   const last = new Map<string, string>();
   for (const session of sessions.filter(counted)) {
@@ -94,7 +98,7 @@ export function exercisesByRecency(exercises: Exercise[], sessions: Session[]): 
     }
   }
   return exercises
-    .filter((x) => !x.deleted && last.has(x.id))
+    .filter((x) => !x.deleted && !x.archived && last.has(x.id))
     .map((exercise) => ({ exercise, lastDate: last.get(exercise.id)! }))
     .sort((a, b) => b.lastDate.localeCompare(a.lastDate) || a.exercise.name.localeCompare(b.exercise.name));
 }

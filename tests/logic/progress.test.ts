@@ -116,3 +116,10 @@ test("recordSets finds none in the first session of an exercise", () => {
   const first = session({ date: "2026-11-01", entries: [entry("bench", [done(65, 10), done(85, 6)])] });
   expect(recordSets(first, { bench }, [first]).size).toBe(0);
 });
+
+test("archived (deleted-with-history) exercises are left out of the list", () => {
+  const gone = exercise("gone", "reps", { archived: true });
+  expect(exercisesByRecency([bench, gone], [session({ entries: [entry("bench", [done(65, 10)]), entry("gone", [done(20, 10)])] })])).toEqual([
+    { exercise: bench, lastDate: "2026-11-10" },
+  ]);
+});

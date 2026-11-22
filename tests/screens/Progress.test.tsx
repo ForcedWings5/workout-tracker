@@ -168,3 +168,26 @@ test("Final: the date field doesn't offer days after today", async () => {
   const { todayLocal } = await import("../../src/logic/clock");
   expect(await screen.findByLabelText("Date")).toHaveAttribute("max", todayLocal());
 });
+
+test("Delete exercise asks first, then takes it off the list and out of every workout, keeping its sessions", async () => {
+  const id = await benchHistory();
+  const user = await openBench();
+  await user.click(screen.getByRole("button", { name: "Delete exercise" }));
+  const sheet = screen.getByRole("dialog", { name: "Delete Barbell Bench Press?" });
+  await user.click(within(sheet).getByRole("button", { name: "Delete exercise" }));
+  await screen.findByRole("heading", { level: 1, name: "Progress" });
+  await waitFor(() => expect(screen.queryByRole("button", { name: /^Barbell Bench Press/ })).not.toBeInTheDocument());
+  const bench = (await db.sessions.get(id))!.entries[0].exerciseId;
+  expect((await db.exercises.get(bench))?.archived).toBe(true);
+  expect((await db.workouts.get(UPPER_A))!.exercises.map((p) => p.exerciseId)).not.toContain(bench);
+  expect((await db.sessions.get(id))!.entries[0].sets.some((s) => s.done)).toBe(true);
+});
+
+test("Keep exercise deletes nothing", async () => {
+  await benchHistory();
+  const user = await openBench();
+  await user.click(screen.getByRole("button", { name: "Delete exercise" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Keep exercise" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 1, name: "Barbell Bench Press" })).toBeInTheDocument();
+});
