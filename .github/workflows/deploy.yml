@@ -1,0 +1,49 @@
+# Builds the app and publishes it to GitHub Pages every time something lands on main.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Adds a "Run workflow" button on GitHub, for redeploying by hand.
+  workflow_dispatch:
+
+permissions:
+  contents: read # read the code
+  pages: write # publish to GitHub Pages
+  id-token: write # lets Pages confirm the deploy comes from this repo
+
+# Two quick merges deploy one after the other instead of colliding.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # A failing test stops the deploy, so a broken app never goes live.
+      - run: npm test
+      - run: npm run build
+        env:
+          # Public values, protected by row level security. Empty until cloud sync is set up; the app then runs with sync off.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
