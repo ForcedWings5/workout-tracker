@@ -1,12 +1,12 @@
 // DEV ONLY. Fills an empty history with made-up finished sessions so the Progress screens can be
 // checked in the browser. Loaded from main.tsx only when `import.meta.env.DEV` and the URL has
 // `?demo`, so production builds never include or run it. Every demo session is labelled in its note.
-import { todayLocal } from "../logic/clock";
+import { nowIso, todayLocal } from "../logic/clock";
 import { addDays, weekdayOf } from "../logic/schedule";
 import type { LoggedSet, Session } from "../logic/types";
 import type { WorkoutDB } from "./db";
 import { loadSchedule } from "./repo";
-import { live, save } from "./write";
+import { live } from "./write";
 
 export async function seedDemoHistory(db: WorkoutDB): Promise<void> {
   const sessions = live(await db.sessions.toArray());
@@ -33,6 +33,8 @@ export async function seedDemoHistory(db: WorkoutDB): Promise<void> {
       );
       return { exerciseId: p.exerciseId, planned: { sets: p.sets, targetMin: p.targetMin, targetMax: p.targetMax, label: p.label }, sets, ...(i === 0 ? { note: "Demo history (dev only)" } : {}) };
     });
-    await save(db.sessions, { id: `demo-session-${date}`, workoutId: workout.id, workoutName: workout.name, date, status: "finished", entries });
+    // Written clean, like seed rows, so sync never pushes made-up history to the cloud
+    // (the sync runner also skips "demo-" ids). Direct put on purpose: save() would mark it dirty.
+    await db.sessions.put({ id: `demo-session-${date}`, workoutId: workout.id, workoutName: workout.name, date, status: "finished", entries, updatedAt: nowIso(), deleted: false, dirty: 0 });
   }
 }

@@ -1,4 +1,4 @@
-import { describeSet, shortSet, formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
+import { timeAgo, describeSet, shortSet, formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
 
 test("formatTarget", () => {
   expect(formatTarget({ sets: 4, targetMin: 6, targetMax: 10 }, "reps")).toBe("4 × 6–10");
@@ -51,4 +51,12 @@ test("shortSet is the compact form for history rows", () => {
   expect(shortSet({ amount: 45, done: true }, "seconds")).toBe("45s");
   expect(shortSet({ weight: 25, amount: 30, done: true }, "seconds")).toBe("25×30s");
   expect(shortSet({ weight: 135, done: true }, "reps")).toBe("135×–");
+});
+
+test("timeAgo says how long ago a sync was, in plain words", () => {
+  const now = new Date("2026-11-22T15:00:00Z");
+  expect(timeAgo("2026-11-22T14:59:40Z", now)).toBe("just now");
+  expect(timeAgo("2026-11-22T14:58:00Z", now)).toBe("2 min ago");
+  expect(timeAgo("2026-11-22T12:00:00Z", now)).toBe("3 h ago");
+  expect(timeAgo("2026-11-20T12:00:00Z", now)).toBe("11/20");
 });

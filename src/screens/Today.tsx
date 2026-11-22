@@ -6,6 +6,8 @@ import { addDays, WEEKDAYS, weekdayOf, type TodayPlan } from "../logic/schedule"
 import { sessionProgress } from "../logic/session";
 import type { Session, Workout } from "../logic/types";
 import { useDb } from "../storage/DbContext";
+import { useAuth } from "../sync/supabase";
+import { X } from "lucide-react";
 import { useToday } from "../ui/useToday";
 import { discardWorkout, loadTodayState, startEmptyWorkout, startWorkout } from "../storage/repo";
 import { Button } from "../ui/Button";
@@ -19,6 +21,22 @@ function exerciseCount(w: Workout): string {
   return `${w.exercises.length} ${w.exercises.length === 1 ? "exercise" : "exercises"}`;
 }
 
+const NUDGE_KEY = "backup-reminder-dismissed";
+const readFlag = (key: string) => {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+};
+const writeFlag = (key: string) => {
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    // Storage unavailable: the nudge just comes back next time.
+  }
+};
+
 const titleOf = (w?: Workout) => (w ? splitWorkoutName(w.name).title : "Workout");
 
 /** "Next: Upper B, Thursday", or "tomorrow" when it is. */
@@ -31,6 +49,8 @@ function nextLine(plan: TodayPlan, today: string, byId: Map<string, Workout>): s
 export function Today({ onOpenLog }: Props) {
   const db = useDb();
   const today = useToday();
+  const auth = useAuth();
+  const [nudgeHidden, setNudgeHidden] = useState(() => readFlag(NUDGE_KEY));
   const state = useLiveQuery(() => loadTodayState(db, today), [db, today]);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -62,6 +82,23 @@ export function Today({ onOpenLog }: Props) {
   return (
     <>
       <ScreenHeader title="Today" />
+
+      {auth.status === "signed-out" && !nudgeHidden && (
+        <div className="backup-nudge">
+          <p>Your workouts aren't backed up yet. Sign in under Settings.</p>
+          <button
+            type="button"
+            className="backup-nudge__close"
+            aria-label="Dismiss"
+            onClick={() => {
+              writeFlag(NUDGE_KEY);
+              setNudgeHidden(true);
+            }}
+          >
+            <X size={20} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       {inProgress ? (
         <InProgress session={inProgress} onResume={() => onOpenLog(inProgress.id)} onDiscard={() => setConfirmDiscard(true)} />

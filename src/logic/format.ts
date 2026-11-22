@@ -55,3 +55,13 @@ export function holdPercent(seconds: number | undefined, target: Pick<Planned, "
   if (!seconds || goal <= 0) return 0;
   return Math.min(100, (seconds / goal) * 100);
 }
+
+/** "just now", "2 min ago", "3 h ago", or the date ("11/20") once it's a day or more. */
+export function timeAgo(iso: string, now: Date = new Date()): string {
+  const seconds = (now.getTime() - Date.parse(iso)) / 1000;
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { db } from "./storage/db";
 import { seedIfEmpty } from "./storage/seed";
+import { startSync } from "./sync/start";
 import "./ui/global.css";
 import "./screens/screens.css";
 
@@ -21,6 +22,8 @@ async function boot() {
     // The app still opens; Today shows the empty state.
     console.error("Seeding failed", err);
   }
+  // Cloud backup: only when this build has Supabase keys and the user has signed in.
+  startSync(db);
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <App />

@@ -3,7 +3,10 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { parseBackup, type Backup } from "../logic/backup";
 import { shortDate, todayLocal } from "../logic/clock";
 import { useDb } from "../storage/DbContext";
-import { exportBackup, importBackup, loadSyncState, markExported } from "../storage/repo";
+import { countUnsynced, exportBackup, importBackup, loadSyncState, markExported } from "../storage/repo";
+import { requestSync } from "../sync/start";
+import { sendCode, signOut, useAuth, verifyCode } from "../sync/supabase";
+import { timeAgo } from "../logic/format";
 import { Button } from "../ui/Button";
 import { Notice } from "../ui/Notice";
 import { ScreenHeader } from "../ui/ScreenHeader";
@@ -93,12 +96,7 @@ export function Settings() {
     <>
       <ScreenHeader title="Settings" />
 
-      <Notice aria-labelledby="cloud-title">
-        <h2 className="settings__title" id="cloud-title">
-          Cloud backup
-        </h2>
-        <p className="empty-text">Cloud backup is coming soon.</p>
-      </Notice>
+      <CloudBackup />
 
       <Notice aria-labelledby="file-title">
         <h2 className="settings__title" id="file-title">
@@ -143,5 +141,126 @@ export function Settings() {
         </div>
       </Sheet>
     </>
+  );
+}
+
+/** Sign in with an emailed 6-digit code (never a link: links open in Safari, which can't reach the home-screen app's data). */
+function CloudBackup() {
+  const db = useDb();
+  const auth = useAuth();
+  const state = useLiveQuery(() => loadSyncState(db), [db]);
+  const waiting = useLiveQuery(() => countUnsynced(db), [db]) ?? 0;
+  const [email, setEmail] = useState("");
+  const [sentTo, setSentTo] = useState<string>();
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const attempt = async (action: () => Promise<void>, failure: string) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await action();
+    } catch (err) {
+      console.error(err);
+      setError(failure);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Notice aria-labelledby="cloud-title">
+      <h2 className="settings__title" id="cloud-title">
+        Cloud backup
+      </h2>
+
+      {auth.status === "off" && <p className="empty-text">Cloud backup isn't set up in this build.</p>}
+
+      {auth.status === "signed-in" && (
+        <>
+          <p className="settings__status">Signed in as {auth.email}</p>
+          <p className="settings__status">
+            {state?.lastSyncedAt ? `Last synced: ${timeAgo(state.lastSyncedAt)}` : "Not synced yet"} · {waiting} {waiting === 1 ? "change" : "changes"} waiting
+          </p>
+          <div className="settings__actions">
+            <Button variant="outline" onClick={() => attempt(requestSync, "Couldn't sync. Your data is safe on this phone; we'll try again when you're online.")} loading={busy} loadingLabel="Syncing…">
+              Sync now
+            </Button>
+            <Button variant="text" onClick={() => attempt(signOut, "Couldn't sign out. Try again.")}>
+              Sign out
+            </Button>
+          </div>
+        </>
+      )}
+
+      {auth.status === "signed-out" && (
+        <>
+          <p className="settings__status">Not backed up</p>
+          {sentTo === undefined ? (
+            <form
+              className="settings__form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const to = email.trim();
+                if (!to) return setError("Enter your email address.");
+                void attempt(async () => {
+                  await sendCode(to);
+                  setSentTo(to);
+                }, "Couldn't send the code. Check the email address and your connection, then try again.");
+              }}
+            >
+              <label className="form-field">
+                <span className="form-field__label">Email</span>
+                <input className="field" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </label>
+              <Button variant="outline" type="submit" loading={busy} loadingLabel="Sending…">
+                Send code
+              </Button>
+            </form>
+          ) : (
+            <form
+              className="settings__form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void attempt(() => verifyCode(sentTo, code.trim()), "That code didn't work. Check it, or send a new one.");
+              }}
+            >
+              <p className="settings__status">We sent a code to {sentTo}.</p>
+              <label className="form-field">
+                <span className="form-field__label">6-digit code</span>
+                <input
+                  className="field"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+              <Button variant="outline" type="submit" loading={busy} loadingLabel="Signing in…">
+                Sign in
+              </Button>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setSentTo(undefined);
+                  setCode("");
+                  setError(undefined);
+                }}
+              >
+                Use a different email
+              </Button>
+            </form>
+          )}
+        </>
+      )}
+
+      {error && (
+        <p className="form-field__error" role="alert">
+          {error}
+        </p>
+      )}
+    </Notice>
   );
 }

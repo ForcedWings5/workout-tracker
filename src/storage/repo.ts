@@ -6,6 +6,7 @@ import { newId } from "../logic/ids";
 import { splitWorkoutName } from "../logic/input";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
 import { todayPlan, type TodayPlan } from "../logic/schedule";
+import { isDemoId } from "../logic/sync-merge";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
 import type { Exercise, LoggedSet, Measure, Schedule, Session, SyncMeta, SyncState, Workout } from "../logic/types";
 import type { Table } from "dexie";
@@ -513,4 +514,24 @@ export async function loadMonthSessions(db: WorkoutDB, year: number, month: numb
     (byDate[s.date] ??= []).push({ id: s.id, title: splitWorkoutName(s.workoutName).title, doneSets });
   }
   return byDate;
+}
+
+// ---------- Cloud sync status ----------
+
+/** How many local changes the cloud hasn't seen yet. */
+export async function countUnsynced(db: WorkoutDB): Promise<number> {
+  const counts = await Promise.all(
+    [db.exercises, db.workouts, db.schedule, db.sessions].map((t) =>
+      (t as Table<SyncMeta, string>).where("dirty").equals(1).filter((r) => !isDemoId(r.id)).count(),
+    ),
+  );
+  return counts.reduce((a, b) => a + b, 0);
+}
+
+/** After signing out: the next sign-in pulls everything again (it may be another account). Local data stays. */
+export async function forgetSyncProgress(db: WorkoutDB): Promise<void> {
+  await db.transaction("rw", db.syncState, async () => {
+    const current = await db.syncState.get("state");
+    if (current) await db.syncState.put({ ...current, lastPulledAt: undefined, lastSyncedAt: undefined });
+  });
 }
