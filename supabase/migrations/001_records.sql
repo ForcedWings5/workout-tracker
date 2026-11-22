@@ -30,6 +30,13 @@ create trigger records_set_synced_at
 
 create index if not exists records_user_synced on public.records (user_id, synced_at);
 
+-- Exactly what the app needs, whether or not the project grants new tables to the API automatically:
+-- signed-in users can read, add and change rows (row level security below limits them to their own);
+-- anyone not signed in gets nothing. No delete: deletes are tombstones.
+revoke all on public.records from anon;
+revoke all on public.records from authenticated;
+grant select, insert, update on public.records to authenticated;
+
 -- Each signed-in user sees and writes only their own rows. There is no delete policy:
 -- deletes are tombstones (deleted = true), written with update.
 alter table public.records enable row level security;
