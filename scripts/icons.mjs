@@ -3,19 +3,20 @@ import { readFile, mkdir } from "node:fs/promises";
 import sharp from "sharp";
 
 const svg = await readFile(new URL("../public/icon.svg", import.meta.url));
+// Android crops icons to a circle; this version keeps the whole picture inside it.
+const maskable = await readFile(new URL("../public/icon-maskable.svg", import.meta.url));
 const out = new URL("../public/icons/", import.meta.url);
 await mkdir(out, { recursive: true });
 
-// The art already sits inside the central 80%, so the maskable icon is the same picture.
 const sizes = {
-  "apple-touch-icon.png": 180,
-  "icon-192.png": 192,
-  "icon-512.png": 512,
-  "icon-maskable-512.png": 512,
+  "apple-touch-icon.png": [180, svg],
+  "icon-192.png": [192, svg],
+  "icon-512.png": [512, svg],
+  "icon-maskable-512.png": [512, maskable],
 };
 
-for (const [name, size] of Object.entries(sizes)) {
-  await sharp(svg, { density: 300 })
+for (const [name, [size, source]] of Object.entries(sizes)) {
+  await sharp(source, { density: 300 })
     .resize(size, size)
     .flatten({ background: "#2a241f" }) // iOS shows transparency as black; keep the board color
     .png({ compressionLevel: 9 })
