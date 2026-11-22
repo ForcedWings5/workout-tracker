@@ -1,4 +1,4 @@
-import { formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
+import { describeSet, formatElapsed, formatTarget, holdPercent, setLabel, targetHint } from "../../src/logic/format";
 
 test("formatTarget", () => {
   expect(formatTarget({ sets: 4, targetMin: 6, targetMax: 10 }, "reps")).toBe("4 × 6–10");
@@ -35,4 +35,12 @@ test("an exercise added mid-session has no target to show", () => {
 test("targetHint is the range a blank set shows", () => {
   expect(targetHint({ targetMin: 6, targetMax: 10 })).toBe("6–10");
   expect(targetHint({ targetMin: 45 })).toBe("45");
+});
+
+test("describeSet reads like the row", () => {
+  expect(describeSet({ weight: 135, amount: 8, done: true }, "reps")).toBe("135 lb × 8 reps");
+  expect(describeSet({ amount: 8, done: false }, "reps")).toBe("Bodyweight × 8 reps");
+  expect(describeSet({ weight: 20, amount: 45, done: false }, "seconds")).toBe("20 lb × 45 sec");
+  expect(describeSet({ weight: 135, done: false }, "reps")).toBe("135 lb");
+  expect(describeSet({ done: false }, "reps")).toBe("Bodyweight");
 });

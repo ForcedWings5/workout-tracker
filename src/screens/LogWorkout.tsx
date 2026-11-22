@@ -1,17 +1,20 @@
+import { Trash2 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState } from "react";
 import { shortDate } from "../logic/clock";
-import { formatElapsed } from "../logic/format";
+import { describeSet, formatElapsed } from "../logic/format";
 import { splitWorkoutName } from "../logic/input";
 import { sessionProgress } from "../logic/session";
-import type { Session } from "../logic/types";
+import type { Measure, Session } from "../logic/types";
 import { useDb } from "../storage/DbContext";
 import {
   addExerciseToSession,
   addSet,
+  deleteSessionSet,
   discardWorkout,
   finishWorkout,
   loadLogState,
+  removeSessionEntry,
   renameSession,
   setNote,
   skipOrRemoveSet,
@@ -27,6 +30,9 @@ import { ExerciseNotice } from "./ExerciseNotice";
 import { ExercisePicker } from "./ExercisePicker";
 
 type Props = { sessionId: string; onClose: () => void };
+
+/** What a delete confirmation is asking about. The exerciseId guards against the list shifting underneath. */
+type PendingDelete = { kind: "set"; entry: number; set: number; exerciseId: string } | { kind: "entry"; entry: number; exerciseId: string };
 
 /** The first set, in session order, that is neither done nor skipped. */
 function currentSetOf(session: Session): { entry: number; set: number } | undefined {
@@ -81,9 +87,16 @@ export function LogWorkout({ sessionId, onClose }: Props) {
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [pending, setPending] = useState<PendingDelete>();
+  /** A confirmed delete hasn't reached the screen yet. */
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const scrollNext = useRef(false);
   const session = state?.session;
   const elapsed = useElapsed(sessionId, !fulfilled);
+
+  // The confirmed delete has landed (or anything else changed the session): delete buttons are safe again.
+  useEffect(() => setDeleteBusy(false), [session]);
 
   // The session was discarded elsewhere: go back.
   useEffect(() => {
@@ -135,17 +148,38 @@ export function LogWorkout({ sessionId, onClose }: Props) {
       <ScreenHeader
         back={{ label: "Today", onClick: onClose }}
         right={
-          <span className="log__timer" aria-label={`Elapsed ${formatElapsed(elapsed)}`}>
-            {formatElapsed(elapsed)}
-          </span>
+          <div className="log__corner">
+            <span className="log__timer" aria-label={`Elapsed ${formatElapsed(elapsed)}`}>
+              {formatElapsed(elapsed)}
+            </span>
+            {/* One button for both states, so focus stays on it as it switches. */}
+            <button
+              type="button"
+              className={deleting ? "btn btn--text-board" : "btn btn--text-board log__trash"}
+              aria-label={deleting ? "Done deleting" : "Delete sets or exercises"}
+              onClick={() => setDeleting(!deleting)}
+            >
+              {deleting ? "Done" : <Trash2 size={22} strokeWidth={2} aria-hidden="true" />}
+            </button>
+          </div>
         }
         title={title}
         subtitle={headerSubtitle}
       />
 
+      {/* Always mounted, so screen readers announce the hint when it appears. */}
+      <p className="visually-hidden" role="status">
+        {deleting ? "Tap a set or exercise to delete it." : ""}
+      </p>
+      {deleting && (
+        <Notice aria-hidden="true">
+          <p className="empty-text">Tap a set or exercise to delete it.</p>
+        </Notice>
+      )}
+
       {!session.workoutId && (
         <Notice aria-label="Workout">
-          <TextField label="Workout name" value={session.workoutName} onCommit={(text) => renameSession(db, sessionId, text)} />
+          <TextField label="Workout name" value={session.workoutName} disabled={deleting} onCommit={(text) => renameSession(db, sessionId, text)} />
         </Notice>
       )}
 
@@ -170,12 +204,16 @@ export function LogWorkout({ sessionId, onClose }: Props) {
             onSkipSet={(s) => run(skipOrRemoveSet(db, sessionId, i, s))}
             onAddSet={() => run(addSet(db, sessionId, i))}
             onNote={(note) => run(setNote(db, sessionId, i, note))}
+            deleting={deleting}
+            onDeleteSet={(s) => setPending({ kind: "set", entry: i, set: s, exerciseId: entry.exerciseId })}
+            onRemove={() => setPending({ kind: "entry", entry: i, exerciseId: entry.exerciseId })}
+            deleteBusy={deleteBusy}
           />
         );
       })}
 
       <div className="board-actions">
-        <Button variant="board" onClick={() => setPicking(true)}>
+        <Button variant="board" disabled={deleting} onClick={() => setPicking(true)}>
           Add exercise
         </Button>
       </div>
@@ -191,10 +229,28 @@ export function LogWorkout({ sessionId, onClose }: Props) {
 
       <div className="fulfill-spacer" />
       <div className="fulfill-bar">
-        <Button variant="primary" onClick={fulfill} loading={finishing}>
+        <Button variant="primary" disabled={deleting} onClick={fulfill} loading={finishing}>
           Fulfill contract
         </Button>
       </div>
+
+      <DeleteSheet
+        pending={pending}
+        session={session}
+        names={state.exercises}
+        onKeep={() => setPending(undefined)}
+        onConfirm={(p) => {
+          setPending(undefined);
+          setDeleteBusy(true);
+          const write = p.kind === "set" ? deleteSessionSet(db, sessionId, p.entry, p.set, p.exerciseId) : removeSessionEntry(db, sessionId, p.entry, p.exerciseId);
+          run(
+            write.catch((err: unknown) => {
+              setDeleteBusy(false);
+              throw err;
+            }),
+          );
+        }}
+      />
 
       <Sheet open={confirmEmpty} onClose={() => setConfirmEmpty(false)} title="Nothing logged yet">
         <p className="sheet__body">Discard this workout?</p>
@@ -216,6 +272,59 @@ export function LogWorkout({ sessionId, onClose }: Props) {
         </div>
       </Sheet>
     </div>
+  );
+}
+
+/** Confirms one delete in delete mode. Only today's session changes. */
+function DeleteSheet({
+  pending,
+  session,
+  names,
+  onKeep,
+  onConfirm,
+}: {
+  pending?: PendingDelete;
+  session: Session;
+  names: Record<string, { name: string; measure: Measure }>;
+  onKeep: () => void;
+  onConfirm: (p: PendingDelete) => void;
+}) {
+  const entry = pending ? session.entries[pending.entry] : undefined;
+  const exercise = pending ? names[pending.exerciseId] : undefined;
+  const name = exercise?.name ?? "Exercise";
+
+  if (pending?.kind === "set") {
+    const set = entry?.sets[pending.set];
+    return (
+      <Sheet open onClose={onKeep} title={`Delete set ${pending.set + 1}?`}>
+        <p className="sheet__body">
+          {name}
+          {set ? ` · ${describeSet(set, exercise?.measure ?? "reps")}` : ""}.
+        </p>
+        <div className="sheet__actions">
+          <Button variant="outline" onClick={onKeep}>
+            Keep set
+          </Button>
+          <Button variant="plain" onClick={() => onConfirm(pending)}>
+            Delete set
+          </Button>
+        </div>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Sheet open={pending?.kind === "entry"} onClose={onKeep} title={`Remove ${name} from today?`}>
+      <p className="sheet__body">Its sets from today go too.</p>
+      <div className="sheet__actions">
+        <Button variant="outline" onClick={onKeep}>
+          Keep
+        </Button>
+        <Button variant="plain" onClick={() => pending && onConfirm(pending)}>
+          Remove exercise
+        </Button>
+      </div>
+    </Sheet>
   );
 }
 

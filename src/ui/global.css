@@ -560,3 +560,7 @@ textarea.field {
     scroll-behavior: auto !important;
   }
 }
+
+.field:disabled {
+  opacity: 0.4;
+}

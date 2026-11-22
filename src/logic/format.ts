@@ -28,6 +28,12 @@ export function setLabel(index: number, set: LoggedSet, measure: Measure): strin
   return `Set ${index + 1}: ${weight}, ${amount}, ${state}`;
 }
 
+/** What a delete confirmation names: "135 lb × 8 reps", "Bodyweight × 45 sec", or just "135 lb" with no amount. */
+export function describeSet(set: LoggedSet, measure: Measure): string {
+  const weight = set.weight !== undefined ? `${set.weight} lb` : "Bodyweight";
+  return set.amount !== undefined ? `${weight} × ${set.amount} ${unitFor(measure)}` : weight;
+}
+
 /** "32:14", or "1:02:03" past an hour. */
 export function formatElapsed(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
