@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Workout Tracker</title>
+  <desc>Original artwork for Workout Tracker, drawn as SVG in this repository (DESIGN-RULES: Icon and imagery). A torn contract pinned to the notice board with a dagger, struck through with a red-ink check. No third-party art or symbols.</desc>
+  <rect width="1024" height="1024" fill="#2a241f"/>
+  <g fill="#221d19"><rect x="318" y="0" width="8" height="1024"/><rect x="706" y="0" width="8" height="1024"/></g><g transform="rotate(-5 512 520)">
+  <polygon points="250,236 774,222 790,612 776,640 788,668 768,694 782,724 760,752 774,782 750,812 722,796 690,822 652,800 610,826 572,804 532,830 496,808 452,832 414,806 374,828 336,802 300,822 270,796 262,520" transform="translate(14 18)" fill="#16120f"/>
+  <polygon points="250,236 774,222 790,612 776,640 788,668 768,694 782,724 760,752 774,782 750,812 722,796 690,822 652,800 610,826 572,804 532,830 496,808 452,832 414,806 374,828 336,802 300,822 270,796 262,520" fill="#efece6"/>
+  <polygon points="250,236 774,222 776,262 252,276" fill="#d8d1c5"/>
+  <g fill="#bdb6aa"><rect x="316" y="372" width="300" height="20" rx="10"/><rect x="316" y="420" width="380" height="20" rx="10"/><rect x="316" y="468" width="250" height="20" rx="10"/></g>
+  <circle cx="300" cy="298" r="17" fill="#4a4a4a"/>
+</g><g transform="rotate(-8 520 640)">
+  <path d="M352 616 C 392 600, 418 640, 470 700 C 540 590, 620 520, 716 470 C 640 548, 560 640, 486 760 C 468 790, 446 790, 430 762 C 404 712, 384 668, 352 616 Z" fill="#a3271f"/>
+</g><g transform="translate(612 318) rotate(30) scale(0.82)">
+  <ellipse cx="0" cy="6" rx="34" ry="9" fill="#16120f" opacity="0.9"/>
+  <polygon points="-26,0 26,0 22,-168 -22,-168" fill="#cfcac2"/>
+  <polygon points="0,0 26,0 22,-168 0,-168" fill="#9d978e"/>
+  <rect x="-2" y="-168" width="4" height="168" fill="#b6b0a7"/>
+  <rect x="-84" y="-196" width="168" height="30" rx="14" fill="#4a443f"/>
+  <rect x="-84" y="-196" width="168" height="12" rx="6" fill="#6b645d"/>
+  <rect x="-20" y="-310" width="40" height="116" rx="10" fill="#5a3b2a"/>
+  <g fill="#3a261b"><rect x="-20" y="-226" width="40" height="10"/><rect x="-20" y="-252" width="40" height="10"/><rect x="-20" y="-278" width="40" height="10"/></g>
+  <circle cx="0" cy="-334" r="30" fill="#4a443f"/>
+  <circle cx="-8" cy="-342" r="12" fill="#6b645d"/>
+</g>
+</svg>

@@ -1,11 +1,13 @@
 // Everything the screens call. Screens never touch Dexie tables directly.
-import { isLocalDate, todayLocal } from "../logic/clock";
+import { BACKUP_VERSION, type Backup } from "../logic/backup";
+import { isLocalDate, nowIso, todayLocal } from "../logic/clock";
 import { cleanName, findExerciseByName, normalizeName } from "../logic/editing";
 import { newId } from "../logic/ids";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
 import { nextUp } from "../logic/rotation";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
-import type { Exercise, LoggedSet, Measure, Session, Workout } from "../logic/types";
+import type { Exercise, LoggedSet, Measure, Session, SyncMeta, SyncState, Workout } from "../logic/types";
+import type { Table } from "dexie";
 import type { WorkoutDB } from "./db";
 import { live, remove, save } from "./write";
 
@@ -433,4 +435,53 @@ export async function loadExerciseHistory(db: WorkoutDB, exerciseId: string): Pr
     .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
     .map(({ updatedAt: _, ...rest }) => rest);
   return { exercise, metric, points, sessions };
+}
+
+// ---------- Backup file ----------
+
+/** Everything, tombstones included, so a restore also restores deletions. */
+export async function exportBackup(db: WorkoutDB): Promise<Backup> {
+  const [exercises, workouts, rotation, sessions] = await Promise.all([
+    db.exercises.toArray(),
+    db.workouts.toArray(),
+    db.rotation.toArray(),
+    db.sessions.toArray(),
+  ]);
+  return { version: BACKUP_VERSION, exportedAt: nowIso(), exercises, workouts, rotation, sessions };
+}
+
+/**
+ * Replaces everything on this phone with the backup, in one transaction. Every row is stamped
+ * now and marked dirty, so the restored copy wins when it syncs. Rows that aren't in the backup
+ * become tombstones rather than vanishing, so the replace reaches the cloud copy too.
+ */
+export async function importBackup(db: WorkoutDB, backup: Backup): Promise<void> {
+  await db.transaction("rw", [db.exercises, db.workouts, db.rotation, db.sessions], async () => {
+    const tombstone = async <T extends SyncMeta>(table: Table<T, string>, keep: { id: string }[]) => {
+      const ids = new Set(keep.map((r) => r.id));
+      for (const row of await table.toArray()) if (!ids.has(row.id) && !row.deleted) await save(table, { ...row, deleted: true });
+    };
+    await tombstone(db.exercises, backup.exercises);
+    await tombstone(db.workouts, backup.workouts);
+    await tombstone(db.rotation, backup.rotation);
+    await tombstone(db.sessions, backup.sessions);
+    // Through save(), like every synced write: it stamps updatedAt and sets dirty.
+    for (const row of backup.exercises) await save(db.exercises, row);
+    for (const row of backup.workouts) await save(db.workouts, row);
+    for (const row of backup.rotation) await save(db.rotation, row);
+    for (const row of backup.sessions) await save(db.sessions, row);
+  });
+}
+
+/** Local-only status: last export, and later sync times. Never synced. */
+export async function loadSyncState(db: WorkoutDB): Promise<SyncState> {
+  return (await db.syncState.get("state")) ?? {};
+}
+
+/** Remembers when a backup file was last exported. */
+export async function markExported(db: WorkoutDB): Promise<void> {
+  await db.transaction("rw", db.syncState, async () => {
+    const current = (await db.syncState.get("state")) ?? { id: "state" as const };
+    await db.syncState.put({ ...current, id: "state", lastExportAt: nowIso() });
+  });
 }
