@@ -15,7 +15,7 @@ Success: logging a workout at the gym is faster and less fiddly than Notes, the 
 - Keep the plan (target sets and rep range) next to what was actually done.
 - Pre-fill each set with last time's numbers so only changes need typing.
 - Optional free-text note per exercise per session ("form shaky at end of set, maybe reduce weight"), shown again the next time that exercise comes up.
-- Follow the user's fixed rotation and open on "Next up."
+- Follow the user's weekly schedule and open on today's workout. (Replaced the rotation on 2026-11-22: see the weekly schedule design.)
 - Edit workouts in the app (exercises, targets, order, rotation) with no code changes.
 - Log a one-off workout that isn't in the rotation.
 - A progress screen per exercise: a chart over time plus a list of past sessions.
@@ -146,7 +146,7 @@ Every write to a synced record goes through one storage helper that sets `update
 
 ## Behavior
 
-**Next up.** The workout after the most recently *finished* rotation workout, wrapping around. With no history, the first in the rotation. Rest days aren't tracked; the app just shows what's next whenever it's opened. The user can start any other workout instead. Finishing a rotation workout sets "next up" to the one after *it*. One-off workouts don't affect the rotation. If the last finished workout is no longer in the rotation (deleted or removed), next up falls back to the first workout in the rotation.
+**Next up.** *Replaced on 2026-11-22 by the weekly schedule (`docs/superpowers/specs/2026-11-22-weekly-schedule-design.md`): Today shows the workout scheduled for today's weekday, a rest day, or a reminder for a workout missed earlier this week. The rest of this paragraph describes the original rotation and is kept for history.* The workout after the most recently *finished* rotation workout, wrapping around. With no history, the first in the rotation. Rest days aren't tracked; the app just shows what's next whenever it's opened. The user can start any other workout instead. Finishing a rotation workout sets "next up" to the one after *it*. One-off workouts don't affect the rotation. If the last finished workout is no longer in the rotation (deleted or removed), next up falls back to the first workout in the rotation.
 
 **Starting a workout** creates an `in_progress` session with one entry per planned exercise, in order, with the target set count. Only one session can be in progress. If one exists, the Today screen offers "Resume" (or "Discard").
 
@@ -257,7 +257,7 @@ Number inputs use the numeric keypad (`inputmode="decimal"` for weight, `"numeri
 ```
 Chart metric: the heaviest done weight per session. If the exercise has never had a weight logged (Toe Touches, unweighted plank), chart the best reps or seconds per session instead.
 
-**Edit Workouts**: list of workouts in rotation order; reorder the rotation, add or delete a workout. In a workout: rename, add, remove or reorder exercises, and change sets, target range, label and measure. Renaming an exercise renames it everywhere, history included. Deleting an exercise with history archives it instead.
+**Edit Workouts**: *(Updated 2026-11-22: the rotation order is replaced by a seven-day "This week" editor; see the weekly schedule design.)* List of workouts; add or delete a workout. In a workout: rename, add, remove or reorder exercises, and change sets, target range, label and measure. Renaming an exercise renames it everywhere, history included. Deleting an exercise with history archives it instead.
 
 **Settings**
 ```
