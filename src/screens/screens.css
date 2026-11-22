@@ -681,3 +681,60 @@ button.set__n::before {
   font-weight: 600;
   color: var(--ink);
 }
+
+/* ---------- Workouts: This week ---------- */
+
+.week {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.week li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.week__day {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.week__day:active {
+  filter: brightness(0.92);
+}
+
+.week__name {
+  width: 108px;
+  flex: none;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
+.week__workout {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.week__workout--rest {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.week__chevron {
+  flex: none;
+  color: var(--ink-2);
+}
