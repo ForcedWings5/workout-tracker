@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Workout Tracker</title>
+  <desc>Original artwork for Workout Tracker, drawn by hand as SVG in this repository (DESIGN-RULES: Icon and imagery). A bone notice with two nails on the board, stamped with a red-ink check.</desc>
+  <!-- The board -->
+  <rect width="1024" height="1024" fill="#2a241f"/>
+  <!-- The notice, nailed slightly askew. Everything sits inside the central 80% so the maskable crop keeps it. -->
+  <g transform="rotate(-2 512 512)">
+    <rect x="232" y="204" width="560" height="616" rx="14" fill="#efece6"/>
+    <circle cx="290" cy="262" r="20" fill="#4a4a4a"/>
+    <circle cx="734" cy="262" r="20" fill="#4a4a4a"/>
+    <!-- Two ruled lines, like set rows -->
+    <rect x="300" y="352" width="300" height="20" rx="10" fill="#dcd8d0"/>
+    <rect x="300" y="408" width="210" height="20" rx="10" fill="#dcd8d0"/>
+  </g>
+  <!-- The red-ink stamp: a filled mark box with a check, settled at a slight angle -->
+  <g transform="rotate(-6 560 600)">
+    <rect x="410" y="450" width="300" height="300" rx="34" fill="#a3271f"/>
+    <path d="M485 604 L540 659 L640 548" fill="none" stroke="#efece6" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

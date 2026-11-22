@@ -7,6 +7,9 @@ import "./ui/global.css";
 import "./screens/screens.css";
 
 async function boot() {
+  // Ask Safari not to evict the database when storage runs low. Harmless if refused or unsupported.
+  navigator.storage?.persist?.().catch(() => {});
+
   try {
     await seedIfEmpty(db);
     // Dev-only synthetic history for checking Progress (`?demo`). Never in production builds.
