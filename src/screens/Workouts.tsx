@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { splitWorkoutName } from "../logic/input";
@@ -97,17 +97,19 @@ export function Workouts({ onEdit }: Props) {
       </div>
 
       <Sheet open={picking !== undefined} onClose={() => setPicking(undefined)} title={picking !== undefined ? WEEKDAYS[picking] : ""}>
-        <ul className="picker__list">
+        <ul className="picker__list week__picker">
           {workouts.map((w) => (
             <li key={w.id}>
               <button type="button" className="picker__option" aria-pressed={picking !== undefined && days[picking] === w.id} onClick={() => pick(w.id)}>
                 <span className="picker__name">{titleOf(w)}</span>
+                {picking !== undefined && days[picking] === w.id && <Check className="week__check" size={20} strokeWidth={2.5} aria-hidden="true" />}
               </button>
             </li>
           ))}
           <li>
             <button type="button" className="picker__option" aria-pressed={picking !== undefined && !dayOf(picking)} onClick={() => pick(null)}>
               <span className="picker__name">Rest</span>
+              {picking !== undefined && !dayOf(picking) && <Check className="week__check" size={20} strokeWidth={2.5} aria-hidden="true" />}
             </button>
           </li>
         </ul>

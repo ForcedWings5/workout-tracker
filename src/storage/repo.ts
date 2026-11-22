@@ -3,6 +3,7 @@ import { BACKUP_VERSION, type Backup } from "../logic/backup";
 import { isLocalDate, nowIso, todayLocal } from "../logic/clock";
 import { cleanName, findExerciseByName, normalizeName } from "../logic/editing";
 import { newId } from "../logic/ids";
+import { splitWorkoutName } from "../logic/input";
 import { exercisesByRecency, progressSeries, type ProgressMetric, type ProgressPoint } from "../logic/progress";
 import { todayPlan, type TodayPlan } from "../logic/schedule";
 import { finishSession, isRemovableSet, lastNoteFor, prefillSetAt, prefillSource, startSession } from "../logic/session";
@@ -495,4 +496,21 @@ export async function markExported(db: WorkoutDB): Promise<void> {
     const current = (await db.syncState.get("state")) ?? { id: "state" as const };
     await db.syncState.put({ ...current, id: "state", lastExportAt: nowIso() });
   });
+}
+
+/** A finished workout as the history calendar lists it. */
+export type DaySession = { id: string; title: string; doneSets: number };
+
+/** Finished sessions in a month (1–12), by date, one-offs included, oldest first within a day. */
+export async function loadMonthSessions(db: WorkoutDB, year: number, month: number): Promise<Record<string, DaySession[]>> {
+  const prefix = `${year}-${String(month).padStart(2, "0")}-`;
+  const sessions = live(await db.sessions.where("date").startsWith(prefix).toArray())
+    .filter((s) => s.status === "finished")
+    .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+  const byDate: Record<string, DaySession[]> = {};
+  for (const s of sessions) {
+    const doneSets = s.entries.reduce((n, e) => n + e.sets.filter((set) => set.done).length, 0);
+    (byDate[s.date] ??= []).push({ id: s.id, title: splitWorkoutName(s.workoutName).title, doneSets });
+  }
+  return byDate;
 }
