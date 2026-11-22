@@ -61,7 +61,9 @@ export function TextField({ label, value, placeholder, inputMode, className, dis
             latest.current++;
             setError(undefined);
             setText(restore);
-            if (restore !== value) onCommit(restore).catch((err: unknown) => console.error("Couldn't save", err));
+            // Always save it back: `value` comes from a live query that can lag behind the
+            // half-typed saves, so it can't tell us whether the restore is needed.
+            onCommit(restore).catch((err: unknown) => console.error("Couldn't save", err));
           }
         }}
         onKeyDown={(e) => {

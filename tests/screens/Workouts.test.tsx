@@ -144,7 +144,8 @@ test("Final #1: deleting a name one character at a time and leaving puts the old
   expect(await within(bench).findByRole("alert")).toHaveTextContent("Give the exercise a name");
   await user.tab();
   await waitFor(async () => expect((await db.exercises.get(BENCH))?.name).toBe("Barbell Bench Press"));
-  expect(within(bench).getByLabelText("Exercise name")).toHaveValue("Barbell Bench Press");
+  // The field follows the saved name through a live query, so give the screen a moment to catch up.
+  await waitFor(() => expect(within(bench).getByLabelText("Exercise name")).toHaveValue("Barbell Bench Press"));
 });
 
 test("Final #1: a number backspaced to blank and left goes back to what it was", async () => {
@@ -160,7 +161,7 @@ test("Final #1: a number backspaced to blank and left goes back to what it was",
   await user.keyboard("{End}{Backspace}2{Backspace}");
   await user.tab();
   await waitFor(async () => expect((await db.workouts.get(UPPER_A))?.exercises[0].sets).toBe(4));
-  expect(within(bench).getByLabelText("Sets")).toHaveValue("4");
+  await waitFor(() => expect(within(bench).getByLabelText("Sets")).toHaveValue("4"));
 });
 
 test("Final #2: a typo in min on the way to the right value keeps max", async () => {
