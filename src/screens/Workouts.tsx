@@ -79,12 +79,15 @@ export function Workouts({ onEdit }: Props) {
         const count = `${w.exercises.length} ${w.exercises.length === 1 ? "exercise" : "exercises"}`;
         return (
           <Notice key={w.id} className="notice--tap">
-            <button type="button" className="contract-tap" aria-label={`Edit ${title}`} onClick={() => onEdit(w.id)}>
-              <span className="contract-tap__title">{title}</span>
+            <button type="button" className="contract-tap contract-tap--row" aria-label={`Edit ${title}`} onClick={() => onEdit(w.id)}>
+              <span className="contract-tap__text">
+                <span className="contract-tap__title">{title}</span>
               {subtitle && <span className="contract__subtitle">{subtitle}</span>}
               <span className="contract__meta">
                 {on.length > 0 ? on.join(", ") : "Not scheduled"} · {count}
               </span>
+              </span>
+              <ChevronRight className="contract-tap__chevron" size={20} strokeWidth={2} aria-hidden="true" />
             </button>
           </Notice>
         );

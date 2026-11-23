@@ -889,3 +889,23 @@ button.set__n::before {
 .start-list {
   margin-top: var(--space-3);
 }
+
+/* A workout card that opens the editor: text on the left, a chevron on the right, like the week rows. */
+.contract-tap--row {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.contract-tap__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.contract-tap__chevron {
+  flex: none;
+  color: var(--ink-2);
+}

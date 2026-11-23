@@ -9,7 +9,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** A bottom sheet for confirmations only. Tapping the scrim or pressing Escape closes it. */
+/** A bottom sheet for confirmations and pickers (DESIGN-RULES: Sheets). Tapping the scrim or pressing Escape closes it. */
 export function Sheet({ open, onClose, title, className, children }: Props) {
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);

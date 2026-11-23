@@ -54,7 +54,7 @@ async function openSettings() {
 test("signed out, Cloud backup says the workouts aren't backed up", async () => {
   await openSettings();
   expect(screen.getByText("Not backed up")).toBeInTheDocument();
-  expect(screen.getByLabelText("Email")).toBeInTheDocument();
+  expect(screen.getByLabelText("Email")).toHaveAttribute("placeholder", "you@example.com");
 });
 
 test("Send code asks for the 6-digit code; the right code signs in", async () => {

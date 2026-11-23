@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-22T00:00:00Z",
+  "title": "Design System: Workout Tracker",
+  "extensions": {
+    "colorMeta": {
+      "red-ink": { "role": "primary", "displayName": "Red Ink", "canonical": "#a3271f", "darkValue": "#ef7d6a", "tonalRamp": ["#3a0e0b", "#5c1712", "#7f1f18", "#a3271f", "#c4483c", "#df7a6c", "#efaea4", "#f8dcd7"] },
+      "record": { "role": "secondary", "displayName": "Record Gold", "canonical": "#8a5e0f", "darkValue": "#e2b04a", "tonalRamp": ["#2e2005", "#4d350a", "#6c4a0d", "#8a5e0f", "#ae7d20", "#d0a03f", "#e8c77e", "#f6e6c2"] },
+      "board": { "role": "neutral", "displayName": "Weathered Board", "canonical": "#2a241f", "darkValue": "#1c1815", "tonalRamp": ["#14110e", "#1c1815", "#2a241f", "#3d342c", "#5a4f45", "#7f7368", "#b0a89c", "#e3ddd4"] },
+      "plank": { "role": "neutral", "displayName": "Plank", "canonical": "#3d342c", "darkValue": "#2a241f" },
+      "notice": { "role": "neutral", "displayName": "Bone", "canonical": "#efece6", "darkValue": "#37302a", "tonalRamp": ["#37302a", "#5d574f", "#857e75", "#a8a197", "#c9c2b8", "#dcd8d0", "#efece6", "#faf8f5"] },
+      "ink": { "role": "neutral", "displayName": "Iron-Gall Ink", "canonical": "#1d1a17", "darkValue": "#efece6" },
+      "ink-2": { "role": "neutral", "displayName": "Faded Ink", "canonical": "#5d574f", "darkValue": "#c2b9ad" },
+      "draft": { "role": "neutral", "displayName": "Draft Ink", "canonical": "#857e75", "darkValue": "#9a9186", "note": "24px text only" },
+      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "#dcd8d0", "darkValue": "#4a423a" },
+      "mark-empty": { "role": "neutral", "displayName": "Unmarked", "canonical": "#8f877c", "darkValue": "#857c71", "note": "control borders only, never text" },
+      "on-board": { "role": "neutral", "displayName": "Board Text", "canonical": "#efece6" },
+      "on-board-2": { "role": "neutral", "displayName": "Board Text, Secondary", "canonical": "#c9c2b8" },
+      "on-board-3": { "role": "neutral", "displayName": "Board Text, Inactive", "canonical": "#b0a89c" },
+      "on-red": { "role": "neutral", "displayName": "Bone on Red", "canonical": "#efece6", "darkValue": "#1c1815" },
+      "nail": { "role": "neutral", "displayName": "Nail", "canonical": "#4a4a4a", "darkValue": "#6b625a" },
+      "field": { "role": "neutral", "displayName": "Field White", "canonical": "#ffffff", "darkValue": "#2a241f" },
+      "scrim": { "role": "neutral", "displayName": "Scrim", "canonical": "rgba(0, 0, 0, 0.5)" },
+      "selection": { "role": "neutral", "displayName": "Selection", "canonical": "rgba(163, 39, 31, 0.25)", "darkValue": "rgba(239, 125, 106, 0.25)" }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Screen titles, the workout name on Today and Log Workout, Rest day, the Fulfilled stamp. Blackletter, self-hosted." },
+      "title-compact": { "displayName": "Title, compact", "purpose": "Workout names on Workouts notices, sheet titles, screen titles over 20 characters." },
+      "set-value": { "displayName": "Set value", "purpose": "Weight, reps and seconds in set rows; 500 weight in draft ink when pre-filled." },
+      "exercise-name": { "displayName": "Exercise name", "purpose": "Exercise names, notice headings, calendar month." },
+      "row": { "displayName": "Row", "purpose": "List rows in pickers, the week, Progress, history and the calendar list." },
+      "body": { "displayName": "Body", "purpose": "Body copy, buttons, inputs, calendar days." },
+      "label": { "displayName": "Label", "purpose": "Targets, notes, subtitles, meta lines, set numbers, form labels, chart titles." },
+      "unit": { "displayName": "Unit", "purpose": "The unit after a value: lb, reps, sec." },
+      "small": { "displayName": "Small", "purpose": "Tab labels, chart axes, weekday initials, the Record label (600)." }
+    },
+    "shadows": [
+      { "name": "notice", "value": "0 1px 2px rgba(0, 0, 0, 0.35)", "purpose": "Paper lying on wood, under every notice. The only shadow in the app." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The stamp curve." },
+      { "name": "stamp", "value": "140ms ease-out-expo; scale(1.15) rotate(-4deg) to scale(1) rotate(-2deg)", "purpose": "A mark box turning done. Never on first render." },
+      { "name": "fulfilled", "value": "220ms ease-out-expo; same keyframes as stamp", "purpose": "The Fulfilled stamp presses in once." },
+      { "name": "state", "value": "150ms ease-out", "purpose": "Pressed filter, border and segmented changes, hold bar width." },
+      { "name": "sheet-up", "value": "200ms ease-out; translateY(24px) to none", "purpose": "Bottom sheet rising." },
+      { "name": "reduced-motion", "value": "0.01ms for all animations and transitions", "purpose": "prefers-reduced-motion: reduce." }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "max-width: 359px", "purpose": "Calendar drops side margins to keep 44px days." },
+      { "name": "column", "value": "480px", "purpose": "Max column width, centered on the board at all wider sizes." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Notice",
+      "kind": "card",
+      "refersTo": "notice",
+      "description": "The bone notice nailed to the board; every piece of content sits on one.",
+      "html": "<section class=\"ds-notice\"><span class=\"ds-nail ds-nail-l\"></span><span class=\"ds-nail ds-nail-r\"></span><h2 class=\"ds-notice-title\">Barbell Bench Press</h2><p class=\"ds-notice-meta\"><span class=\"ds-date\">11/16</span> · Felt strong</p></section>",
+      "css": ".ds-notice { position: relative; margin: 0 12px; padding: 20px 16px 12px; background: var(--notice, #efece6); color: var(--ink, #1d1a17); border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.35); font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } .ds-nail { position: absolute; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--nail, #4a4a4a); } .ds-nail-l { left: 8px; } .ds-nail-r { right: 8px; } .ds-notice-title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 650; } .ds-notice-meta { margin: 8px 0 0; font-size: 15px; line-height: 20px; color: var(--ink-2, #5d574f); } .ds-date { color: var(--red-ink, #a3271f); font-weight: 600; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one red-ink action per screen: Start workout, Fulfill contract, Done.",
+      "html": "<button class=\"ds-btn-primary\">Fulfill contract</button>",
+      "css": ".ds-btn-primary { width: 100%; min-height: 54px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--red-ink, #a3271f); color: var(--on-red, #efece6); font: 650 17px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; transition: filter 150ms ease-out; } .ds-btn-primary:active { filter: brightness(0.92); } .ds-btn-primary:focus-visible { outline: 2px solid var(--on-board, #efece6); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.4; pointer-events: none; }"
+    },
+    {
+      "name": "Board Button",
+      "kind": "button",
+      "refersTo": "button-board",
+      "description": "Secondary action on the bare board: Resume.",
+      "html": "<button class=\"ds-btn-board\">Resume</button>",
+      "css": ".ds-btn-board { width: 100%; min-height: 48px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--plank, #3d342c); color: var(--on-board, #efece6); font: 600 16px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; transition: filter 150ms ease-out; } .ds-btn-board:active { filter: brightness(0.92); } .ds-btn-board:focus-visible { outline: 2px solid var(--on-board, #efece6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action on a notice: Export backup, Sync now.",
+      "html": "<button class=\"ds-btn-outline\">Export backup</button>",
+      "css": ".ds-btn-outline { min-height: 48px; padding: 0 16px; border: 2px solid var(--ink, #1d1a17); border-radius: 8px; background: none; color: var(--ink, #1d1a17); font: 600 16px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; transition: filter 150ms ease-out; } .ds-btn-outline:active { filter: brightness(0.92); } .ds-btn-outline:focus-visible { outline: 2px solid var(--ink, #1d1a17); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Button",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Red text action on a notice, such as + Set.",
+      "html": "<button class=\"ds-btn-text\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>Set</button>",
+      "css": ".ds-btn-text { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--red-ink, #a3271f); font: 600 16px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; transition: filter 150ms ease-out; } .ds-btn-text:active { filter: brightness(0.92); } .ds-btn-text:focus-visible { outline: 2px solid var(--ink, #1d1a17); outline-offset: 2px; }"
+    },
+    {
+      "name": "Set Row with Mark Box",
+      "kind": "custom",
+      "refersTo": "set-row",
+      "description": "A 56px set row: set number, weight, reps, and the 44px mark box; done sets are stamped red, a personal best shows Record.",
+      "html": "<div class=\"ds-set\"><span class=\"ds-set-n\">3</span><span class=\"ds-val\">200<small>lb</small></span><span class=\"ds-val\">8<small>reps</small><em class=\"ds-record\">Record</em></span><button class=\"ds-mark ds-mark-done\" aria-pressed=\"true\" aria-label=\"Set 3: 200 lb, 8 reps, done\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg></button></div><div class=\"ds-set\"><span class=\"ds-set-n\">4</span><span class=\"ds-val ds-draft\">80<small>lb</small></span><span class=\"ds-val ds-draft\">7<small>reps</small></span><button class=\"ds-mark ds-mark-current\" aria-label=\"Set 4: 80 lb, 7 reps, not done\"></button></div>",
+      "css": ".ds-set { display: grid; grid-template-columns: 28px 1fr 1fr 52px; align-items: center; min-height: 56px; border-top: 1px solid var(--rule, #dcd8d0); background: var(--notice, #efece6); color: var(--ink, #1d1a17); font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } .ds-set-n { font-size: 15px; color: var(--ink-2, #5d574f); font-variant-numeric: tabular-nums; } .ds-val { display: inline-flex; align-items: baseline; gap: 4px; font-size: 24px; line-height: 28px; font-weight: 600; font-variant-numeric: tabular-nums; } .ds-val small { font-size: 14px; font-weight: 500; color: var(--ink-2, #5d574f); } .ds-draft { color: var(--draft, #857e75); font-weight: 500; } .ds-record { margin-left: 4px; font-style: normal; font-size: 13px; font-weight: 600; color: var(--record, #8a5e0f); } .ds-mark { justify-self: end; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 2px solid var(--mark-empty, #8f877c); border-radius: 8px; background: transparent; color: var(--ink-2, #5d574f); cursor: pointer; transition: border-color 150ms ease-out; } .ds-mark-current { border-color: var(--ink, #1d1a17); } .ds-mark-done { border-color: var(--red-ink, #a3271f); background: var(--red-ink, #a3271f); color: var(--on-red, #efece6); transform: rotate(-2deg); animation: ds-stamp 140ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-mark:focus-visible { outline: 2px solid var(--ink, #1d1a17); outline-offset: 2px; } @keyframes ds-stamp { from { transform: scale(1.15) rotate(-4deg); } to { transform: scale(1) rotate(-2deg); } }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Text input on a notice: white fill, rule border, 2px ink on focus.",
+      "html": "<input class=\"ds-field\" placeholder=\"Add a note…\">",
+      "css": ".ds-field { width: 100%; min-height: 48px; padding: 12px; background: var(--field, #ffffff); color: var(--ink, #1d1a17); border: 1px solid var(--rule, #dcd8d0); border-radius: 8px; font: 400 16px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } .ds-field::placeholder { color: var(--ink-2, #5d574f); opacity: 1; } .ds-field:focus { outline: none; border: 2px solid var(--ink, #1d1a17); padding: 11px; }"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Fixed plank tab bar with four Lucide tabs; active in on-board, inactive in on-board-3, never red.",
+      "html": "<nav class=\"ds-tabbar\"><button class=\"ds-tab\" aria-current=\"page\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 12h-5\"/><path d=\"M15 8h-5\"/><path d=\"M19 17V5a2 2 0 0 0-2-2H4\"/><path d=\"M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3\"/></svg>Today</button><button class=\"ds-tab\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 7h6v6\"/><path d=\"m22 7-8.5 8.5-5-5L2 17\"/></svg>Progress</button></nav>",
+      "css": ".ds-tabbar { display: grid; grid-template-columns: repeat(2, 1fr); height: 49px; background: var(--plank, #3d342c); } .ds-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 0; padding: 0; background: none; color: var(--on-board-3, #b0a89c); font: 500 13px/18px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; } .ds-tab[aria-current=\"page\"] { color: var(--on-board, #efece6); } .ds-tab:focus-visible { outline: 2px solid var(--on-board, #efece6); outline-offset: -4px; }"
+    },
+    {
+      "name": "Fulfilled Stamp",
+      "kind": "custom",
+      "refersTo": "fulfilled-stamp",
+      "description": "The blackletter red-ink stamp on the finished-workout summary; presses in once over 220ms.",
+      "html": "<p class=\"ds-fulfilled\">Fulfilled</p>",
+      "css": ".ds-fulfilled { display: inline-block; margin: 0; padding: 4px 16px 8px; border: 2px solid var(--red-ink, #a3271f); border-radius: 8px; color: var(--red-ink, #a3271f); font: 700 38px/38px UnifrakturCook, Georgia, serif; transform: rotate(-2deg); animation: ds-fulfilled 220ms cubic-bezier(0.16, 1, 0.3, 1); } @keyframes ds-fulfilled { from { transform: scale(1.15) rotate(-4deg); } to { transform: scale(1) rotate(-2deg); } }"
+    },
+    {
+      "name": "Bottom Sheet",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "Notice-colored bottom sheet over a 50% scrim with a compact blackletter title; for confirmations and pickers.",
+      "html": "<div class=\"ds-sheet\"><h2 class=\"ds-sheet-title\">Discard this workout?</h2><p class=\"ds-sheet-body\">The sets you've logged will be deleted.</p><button class=\"ds-sheet-action\">Discard workout</button></div>",
+      "css": ".ds-sheet { max-width: 480px; padding: 24px 16px 16px; background: var(--notice, #efece6); color: var(--ink, #1d1a17); border-radius: 12px 12px 0 0; animation: ds-sheet-up 200ms ease-out; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } .ds-sheet-title { margin: 0; font: 700 28px/30px UnifrakturCook, Georgia, serif; } .ds-sheet-body { margin: 12px 0 0; font-size: 16px; line-height: 22px; color: var(--ink-2, #5d574f); } .ds-sheet-action { margin-top: 20px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--ink, #1d1a17); font: 600 16px/22px inherit; cursor: pointer; } .ds-sheet-action:active { filter: brightness(0.92); } .ds-sheet-action:focus-visible { outline: 2px solid var(--ink, #1d1a17); outline-offset: 2px; } @keyframes ds-sheet-up { from { transform: translateY(24px); } to { transform: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Contract Board",
+    "overview": "Each workout is a contract posted on a village notice board. The screen is the dark board; every piece of content sits on a bone notice nailed to it at two top corners. Last time's numbers wait in faded draft ink, each set the owner confirms is stamped in red ink, and a finished workout is stamped \"Fulfilled\". The app is a one-handed gym tool on an iPhone 14 Pro (393 × 852), so density is moderate, tap targets are large, and the fantasy never costs a tap.\n\nThe fantasy lives in four places only: the palette, the blackletter title lettering, the nailed notices, and the red-ink stamp. Navigation, controls and layout are the standard ones an iPhone user already knows: a bottom tab bar, bottom sheets, inline editing. Everything is flat solid color; the single paper-on-wood shadow under each notice is the only depth.\n\nAll fantasy material is generic and original (notice boards, nails, ink, blackletter, stamps). Nothing comes from any existing franchise.",
+    "keyCharacteristics": [
+      "Dark board ground, bone notices, iron-gall ink, one red ink, one record gold.",
+      "Blackletter for titles at 28px and up; the platform sans with tabular numerals for everything else.",
+      "Data always sits on a notice, never on the bare board.",
+      "One signature motion: the 140ms red-ink stamp on a mark box.",
+      "Light and dark follow the system; the structure stays identical, only the tokens change."
+    ],
+    "rules": [
+      { "name": "The Red Means Done Rule", "body": "Red ink marks completion and the one action that leads to it. Destructive actions are never red: delete and discard are plain ink text buttons inside a confirmation sheet, labelled with exactly what happens (\"Delete session\").", "section": "colors" },
+      { "name": "The Notice Carries the Data Rule", "body": "Every number, input, list and chart is ink on a notice. The bare board holds only titles, subtitles, the timer, the backup nudge and board buttons.", "section": "colors" },
+      { "name": "The No Per-Workout Color Rule", "body": "A workout is identified by its name and its days, never by a color.", "section": "colors" },
+      { "name": "The Blackletter Floor Rule", "body": "Blackletter appears at 28px or larger, on titles only: never on labels, buttons, numbers, inputs or meta lines.", "section": "typography" },
+      { "name": "The Tabular Numbers Rule", "body": "Every number the owner compares (set values, dates, targets, timers, chart labels, calendar days) uses tabular-nums.", "section": "typography" },
+      { "name": "The Sentence Case Rule", "body": "Sentence case everywhere; no uppercase, letter-spaced labels. Nothing is smaller than 13px.", "section": "typography" },
+      { "name": "The One Shadow Rule", "body": "No glows, gradients, blur, glass or hard offset shadows. A sheet is lifted by its scrim, not by a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do put every number, input, list and chart on a notice with two nails and the one shadow.",
+      "Do keep red ink for done sets, the single primary action, text buttons on a notice, the last-note date, calendar done-dots and chart points.",
+      "Do use tabular numerals for every compared number and 16px for every text input.",
+      "Do make every control at least 44 × 44px with pressed, focus, disabled and loading states.",
+      "Do follow the system light/dark setting through the token swap; keep the structure identical."
+    ],
+    "donts": [
+      "Don't set blackletter under 28px or on labels, buttons, numbers or inputs.",
+      "Don't add wood grain, parchment, paper texture, burnt edges, gradients, glass, blur, glows or hard offset shadows.",
+      "Don't use ✕ or a strikethrough for a done set; strikethrough means skipped.",
+      "Don't make destructive actions or errors red.",
+      "Don't use typed glyphs or emoji as icons, or uppercase letter-spaced labels above headings.",
+      "Don't nest notices or put cards inside notices.",
+      "Don't load fonts or anything else from another site at runtime.",
+      "Don't borrow any medallion, sign, sigil, logo, typeface, character or interface element from an existing franchise."
+    ]
+  }
+}
