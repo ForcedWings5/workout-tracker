@@ -8,8 +8,10 @@ const BOARD = "#2a241f";
 /** The installable app: manifest, icons and the offline cache. Exported so tests can check it. */
 export const pwaOptions: Partial<VitePWAOptions> = {
   registerType: "autoUpdate",
-  includeAssets: ["icon.svg", "icons/apple-touch-icon.png"],
+  // The precache glob below already has every icon; adding them again would cache them twice.
+  includeManifestIcons: false,
   manifest: {
+    id: "/workout-tracker/",
     name: "Workout Tracker",
     short_name: "Workouts",
     display: "standalone",
