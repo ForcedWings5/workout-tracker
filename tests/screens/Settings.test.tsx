@@ -9,6 +9,7 @@ beforeEach(async () => {
   db = await seededDb();
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   // jsdom has no share API; remove anything a test put on navigator.
@@ -126,5 +127,30 @@ test("a downloaded backup's file stays readable long enough for a slow save", as
   expect(revoke).not.toHaveBeenCalled();
   await vi.advanceTimersByTimeAsync(60_000);
   expect(revoke).toHaveBeenCalledWith("blob:backup");
-  vi.useRealTimers();
+});
+
+test("if sharing is refused even right after the tap, it says so instead of asking again forever", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
+  Object.assign(navigator, { canShare: () => true, share });
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await screen.findByText(/Tap Export backup again/);
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't export the backup. Try again.");
+  expect(screen.queryByText(/Tap Export backup again/)).not.toBeInTheDocument();
+});
+
+test("a backup waiting for a tap is built again after an import", async () => {
+  const share = vi.fn().mockRejectedValueOnce(new DOMException("needs a fresh tap", "NotAllowedError")).mockResolvedValue(undefined);
+  Object.assign(navigator, { canShare: () => true, share });
+  const backup = await exportBackup(db);
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await screen.findByText(/Tap Export backup again/);
+  await user.upload(screen.getByLabelText("Choose a backup file"), new File([JSON.stringify(backup)], "b.json", { type: "application/json" }));
+  await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Replace everything" }));
+  await screen.findByText("Backup imported.");
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await waitFor(() => expect(share).toHaveBeenCalledTimes(2));
+  expect(share.mock.calls[1][0].files[0]).not.toBe(share.mock.calls[0][0].files[0]);
 });

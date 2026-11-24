@@ -61,14 +61,17 @@ export function Settings() {
     setError(undefined);
     setMessage(undefined);
     try {
-      let file = ready.current;
+      const retrying = ready.current;
       ready.current = undefined;
+      let file = retrying;
       if (!file) {
         const backup = await exportBackup(db);
         file = new File([JSON.stringify(backup)], `workout-tracker-backup-${todayLocal()}.json`, { type: "application/json" });
       }
       const result = await deliver(file);
       if (result === "saved") await markExported(db);
+      // Refused again, straight after a tap: it isn't the time limit, so asking for another tap won't help.
+      if (result === "retry" && retrying) throw new Error("Sharing refused");
       if (result === "retry") {
         ready.current = file;
         setMessage("Your backup is ready. Tap Export backup again to save it.");
@@ -94,6 +97,7 @@ export function Settings() {
 
   const replace = async () => {
     if (!pending) return;
+    ready.current = undefined; // a backup built before the import no longer matches what's here
     setImporting(true);
     try {
       await importBackup(db, pending);
