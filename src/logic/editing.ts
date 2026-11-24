@@ -29,6 +29,9 @@ export function cleanName(s: string): string {
 
 type Targets = { sets: number; targetMin: number; targetMax?: number };
 
+/** More than this is almost surely a typo (40 for 4), and would add that many rows next workout. */
+export const MAX_SETS = 20;
+
 /**
  * Applies one typed target number to a planned exercise. Returns the updated copy,
  * or a message saying what's wrong (nothing is saved then). Values are rounded to
@@ -40,6 +43,7 @@ export function setPlannedNumber<T extends Targets>(planned: T, field: "sets" | 
   const copy = { ...planned };
   if (field === "sets") {
     if (value === undefined || Math.round(value) < 1) return "At least 1 set";
+    if (Math.round(value) > MAX_SETS) return `At most ${MAX_SETS} sets`;
     copy.sets = Math.round(value);
     return copy;
   }

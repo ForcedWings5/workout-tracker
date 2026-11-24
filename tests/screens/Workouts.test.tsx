@@ -125,6 +125,13 @@ test("switching an exercise to seconds changes its measure", async () => {
   await waitFor(() => expect(within(bench).getByRole("button", { name: "Seconds" })).toHaveAttribute("aria-pressed", "true"));
 });
 
+test("the Reps/Seconds switch says it changes the exercise everywhere", async () => {
+  const { bench } = await editBench();
+  expect(within(bench).getByRole("group", { name: "Measured in" })).toHaveAccessibleDescription(
+    "Changes Barbell Bench Press everywhere, its past sets included.",
+  );
+});
+
 test("an exercise's fields stay folded until Edit", async () => {
   const user = await openEditor("Upper A");
   const bench = screen.getByRole("region", { name: "Barbell Bench Press" });
