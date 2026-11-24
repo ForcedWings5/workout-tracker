@@ -35,6 +35,8 @@ vi.mock("../../src/sync/supabase", async () => {
   };
 });
 
+vi.mock("../../src/sync/start", () => ({ startSync: vi.fn(), requestSync: vi.fn(async () => true) }));
+
 let db: WorkoutDB;
 beforeEach(async () => {
   db = await seededDb();
@@ -91,6 +93,23 @@ test("signed in, it shows the account, when it last synced and what's waiting", 
   expect(screen.getByText("Signed in as a@b.co")).toBeInTheDocument();
   expect(await screen.findByText("Not synced yet · 1 change waiting")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Sync now" })).toBeInTheDocument();
+});
+
+test("Sync now says so when it can't sync, offline say", async () => {
+  const { requestSync } = await import("../../src/sync/start");
+  vi.mocked(requestSync).mockResolvedValueOnce(false);
+  auth.set({ status: "signed-in", email: "a@b.co" });
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Sync now" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't sync. Your data is safe on this phone; we'll try again when you're online.");
+});
+
+test("Sync now shows nothing extra when the sync works", async () => {
+  auth.set({ status: "signed-in", email: "a@b.co" });
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Sync now" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Sync now" })).toBeEnabled());
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
 test("without cloud keys in this build, the notice says so and Today has no reminder", async () => {
