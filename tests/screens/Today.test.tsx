@@ -140,7 +140,10 @@ test("Review Focus 3: a workout in progress from yesterday shows only Resume and
   at(2026, 11, 16);
   await startWorkout(db, UPPER_A);
   at(2026, 11, 17);
+  const user = userEvent.setup();
   renderApp(db);
+  // The app reopens into the workout; back to Today.
+  await user.click(await screen.findByRole("button", { name: "Today" }));
   expect(await screen.findByRole("button", { name: "Resume" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Discard" })).toBeInTheDocument();
   expect(screen.queryByText(/^Today · /)).not.toBeInTheDocument();
@@ -155,6 +158,7 @@ test("Discard asks first, then removes the in-progress workout", async () => {
   await startWorkout(db, UPPER_A);
   const user = userEvent.setup();
   renderApp(db);
+  await user.click(await screen.findByRole("button", { name: "Today" })); // out of the reopened workout
   await user.click(await screen.findByRole("button", { name: "Discard" }));
   await user.click(within(screen.getByRole("dialog", { name: "Discard this workout?" })).getByRole("button", { name: "Discard workout" }));
   await waitFor(async () => expect((await loadTodayState(db)).inProgress).toBeUndefined());

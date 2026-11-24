@@ -83,8 +83,8 @@ test("a valid file asks first, then replaces everything", async () => {
 
 test("Keep what's here leaves the phone as it was", async () => {
   const backup = await exportBackup(db);
-  const id = await startWorkout(db, "seed-workout-upper-a");
   const user = await openSettings();
+  const id = await startWorkout(db, "seed-workout-upper-a");
   await user.upload(screen.getByLabelText("Choose a backup file"), new File([JSON.stringify(backup)], "b.json", { type: "application/json" }));
   await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Keep what's here" }));
   expect(await db.sessions.get(id)).toBeDefined();
