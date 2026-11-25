@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDb } from "./storage/DbContext";
+import { findInProgressId } from "./storage/repo";
 import { EditWorkout } from "./screens/EditWorkout";
 import { ExerciseHistory } from "./screens/ExerciseHistory";
 import type { CalendarState } from "./screens/HistoryCalendar";
@@ -18,7 +20,27 @@ type Overlay =
 type View = { tab: Tab; overlay?: Overlay; calendar?: CalendarState };
 
 export default function App() {
-  const [view, setView] = useState<View>({ tab: "today" });
+  const db = useDb();
+  /** Undefined only while checking, at launch, for a workout to reopen. */
+  const [view, setView] = useState<View>();
+
+  // iOS often closes a home-screen app while the phone is locked between sets: opening it again
+  // lands back in the workout in progress, not on Today.
+  useEffect(() => {
+    let current = true;
+    const open = (sessionId?: string) => {
+      if (current) setView((v) => v ?? (sessionId ? { tab: "today", overlay: { kind: "log", sessionId } } : { tab: "today" }));
+    };
+    findInProgressId(db).then(open, (err: unknown) => {
+      console.error("Couldn't check for a workout in progress", err);
+      open();
+    });
+    return () => {
+      current = false;
+    };
+  }, [db]);
+
+  if (!view) return <div className="app" />;
 
   if (view.overlay?.kind === "log") {
     return (

@@ -194,9 +194,33 @@ test("a failed sync is swallowed and the next trigger tries again", async () => 
   vi.useFakeTimers();
   const run = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(undefined);
   const s = createSyncScheduler(run, { debounceMs: 10 });
-  await expect(s.runNow()).resolves.toBeUndefined();
+  await expect(s.runNow()).resolves.toBe(false);
   s.trigger();
   await vi.advanceTimersByTimeAsync(10);
+  expect(run).toHaveBeenCalledTimes(2);
+  s.dispose();
+});
+
+test("runNow says whether the sync worked, so Sync now can say when it didn't", async () => {
+  const run = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("offline"));
+  const s = createSyncScheduler(run);
+  await expect(s.runNow()).resolves.toBe(true);
+  await expect(s.runNow()).resolves.toBe(false);
+  s.dispose();
+});
+
+test("a runNow queued behind a run gets the result of the run that covered it", async () => {
+  let fail!: (e: Error) => void;
+  const run = vi
+    .fn()
+    .mockImplementationOnce(() => new Promise<void>((_, reject) => (fail = reject)))
+    .mockResolvedValueOnce(undefined);
+  const s = createSyncScheduler(run);
+  const first = s.runNow();
+  const second = s.runNow();
+  fail(new Error("offline"));
+  await expect(second).resolves.toBe(true);
+  await first;
   expect(run).toHaveBeenCalledTimes(2);
   s.dispose();
 });

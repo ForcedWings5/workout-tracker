@@ -359,7 +359,7 @@ On the summary notice after finishing: "Fulfilled" in 38px blackletter `red-ink`
 ### Iconography
 Lucide only, 2px stroke by default: 20px in buttons and rows, 24px in the tab bar. The done check is Lucide `check` (24px, 2.5 stroke); never a typed ✓, ✕ or emoji.
 
-**Home-screen icon:** original flat vector art (`public/icon.svg`, 1024px): a torn bone contract pinned to the `board` ground with a dagger, struck through with a red-ink check, with faint plank seams. The maskable icon is the same picture at 80%. PNGs (180px apple-touch, 192, 512, maskable 512) are rendered from the SVGs; provenance is in `public/icons/SOURCE.md`.
+**Home-screen icon:** original flat vector art (`public/icon.svg`, 1024px): a torn bone contract pinned to the `board` ground with a dagger, struck through with a red-ink check, with faint plank seams. The maskable icon is the same picture at 80%. PNGs (180px apple-touch, 192, 512, maskable 512) are rendered from the SVGs; provenance is in `scripts/ICONS.md`.
 
 ### Accessibility
 - Measured contrast (light / dark), all on the notice: ink 14.7 / 11.0; ink-2 6.1 / 6.7; red-ink 6.2 / 4.8; on-red on red-ink 6.2 / 6.6; record 4.8 / 6.5; draft 3.4 / 4.2 (24px only); mark-empty 3.0 / 3.2 (borders only). On the board: on-board 13.0; on-board-2 8.7; on-board-3 on plank 5.2.

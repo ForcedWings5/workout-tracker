@@ -53,6 +53,12 @@ describe("setPlannedNumber", () => {
     expect(setPlannedNumber(bench, "sets", "3.6")).toEqual({ ...bench, sets: 4 });
   });
 
+  test("sets stops at 20, so a typo like 40 can't make 40 rows", () => {
+    expect(setPlannedNumber(bench, "sets", "20")).toEqual({ ...bench, sets: 20 });
+    expect(setPlannedNumber(bench, "sets", "21")).toBe("At most 20 sets");
+    expect(setPlannedNumber(bench, "sets", "40")).toBe("At most 20 sets");
+  });
+
   test("targetMin needs a number", () => {
     expect(setPlannedNumber(bench, "targetMin", "8")).toEqual({ ...bench, targetMin: 8 });
     expect(setPlannedNumber(bench, "targetMin", "")).toBe("Enter a number");

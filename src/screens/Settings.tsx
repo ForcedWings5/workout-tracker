@@ -15,19 +15,24 @@ import { Sheet } from "../ui/Sheet";
 /** "11/12" from an ISO timestamp, in the phone's local date. */
 const localShortDate = (iso: string) => shortDate(todayLocal(new Date(iso)));
 
+/** How long a downloaded backup's file stays readable: long enough for a slow save. */
+const DOWNLOAD_URL_LIFETIME_MS = 60_000;
+
 /**
- * Hands the file to the iOS share sheet (Save to Files, AirDrop…), or downloads it where that
- * isn't available. Safari only allows sharing shortly after the tap; if building a big backup
- * took too long it refuses with NotAllowedError, and the file downloads instead.
+ * Hands the file to the iOS share sheet (Save to Files, AirDrop…), or downloads it where sharing
+ * isn't available. Safari only allows sharing shortly after the tap; if building a big backup took
+ * too long it refuses with NotAllowedError, and the file waits for one more tap ("retry"). A
+ * download is no fallback there: the home-screen app has no way to save one.
  */
-async function deliver(file: File): Promise<"saved" | "cancelled"> {
+async function deliver(file: File): Promise<"saved" | "cancelled" | "retry"> {
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file] });
       return "saved";
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return "cancelled";
-      if (!(err instanceof DOMException && err.name === "NotAllowedError")) throw err;
+      if (err instanceof DOMException && err.name === "NotAllowedError") return "retry";
+      throw err;
     }
   }
   const url = URL.createObjectURL(file);
@@ -35,7 +40,7 @@ async function deliver(file: File): Promise<"saved" | "cancelled"> {
   a.href = url;
   a.download = file.name;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME_MS);
   return "saved";
 }
 
@@ -48,15 +53,29 @@ export function Settings() {
   const [pending, setPending] = useState<Backup>();
   const [importing, setImporting] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  /** A backup built but refused by the share sheet: the next tap shares it at once, inside the tap's time limit. */
+  const ready = useRef<File>();
 
   const exportFile = async () => {
     setExporting(true);
     setError(undefined);
     setMessage(undefined);
     try {
-      const backup = await exportBackup(db);
-      const file = new File([JSON.stringify(backup)], `workout-tracker-backup-${todayLocal()}.json`, { type: "application/json" });
-      if ((await deliver(file)) === "saved") await markExported(db);
+      const retrying = ready.current;
+      ready.current = undefined;
+      let file = retrying;
+      if (!file) {
+        const backup = await exportBackup(db);
+        file = new File([JSON.stringify(backup)], `workout-tracker-backup-${todayLocal()}.json`, { type: "application/json" });
+      }
+      const result = await deliver(file);
+      if (result === "saved") await markExported(db);
+      // Refused again, straight after a tap: it isn't the time limit, so asking for another tap won't help.
+      if (result === "retry" && retrying) throw new Error("Sharing refused");
+      if (result === "retry") {
+        ready.current = file;
+        setMessage("Your backup is ready. Tap Export backup again to save it.");
+      }
     } catch (err) {
       console.error("Export failed", err);
       setError("Couldn't export the backup. Try again.");
@@ -78,6 +97,7 @@ export function Settings() {
 
   const replace = async () => {
     if (!pending) return;
+    ready.current = undefined; // a backup built before the import no longer matches what's here
     setImporting(true);
     try {
       await importBackup(db, pending);
@@ -184,7 +204,16 @@ function CloudBackup() {
             {state?.lastSyncedAt ? `Last synced: ${timeAgo(state.lastSyncedAt)}` : "Not synced yet"} · {waiting} {waiting === 1 ? "change" : "changes"} waiting
           </p>
           <div className="settings__actions">
-            <Button variant="outline" onClick={() => attempt(requestSync, "Couldn't sync. Your data is safe on this phone; we'll try again when you're online.")} loading={busy} loadingLabel="Syncing…">
+            <Button
+              variant="outline"
+              onClick={() =>
+                attempt(async () => {
+                  if (!(await requestSync())) throw new Error("Sync failed");
+                }, "Couldn't sync. Your data is safe on this phone; we'll try again when you're online.")
+              }
+              loading={busy}
+              loadingLabel="Syncing…"
+            >
               Sync now
             </Button>
             <Button variant="text" onClick={() => attempt(signOut, "Couldn't sign out. Try again.")}>

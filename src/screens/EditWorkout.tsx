@@ -194,7 +194,12 @@ function PlanNotice({ planned, initiallyOpen = false, exercise, first, last, onN
             <span className="form-field__label" id={`measure-${planned.exerciseId}`}>
               Measured in
             </span>
-            <div className="segmented" role="group" aria-labelledby={`measure-${planned.exerciseId}`}>
+            <div
+              className="segmented"
+              role="group"
+              aria-labelledby={`measure-${planned.exerciseId}`}
+              aria-describedby={`measure-hint-${planned.exerciseId}`}
+            >
               {(["reps", "seconds"] as const).map((m) => (
                 <button
                   key={m}
@@ -207,6 +212,9 @@ function PlanNotice({ planned, initiallyOpen = false, exercise, first, last, onN
                 </button>
               ))}
             </div>
+            <p className="form-hint" id={`measure-hint-${planned.exerciseId}`}>
+              Changes {name} everywhere, its past sets included.
+            </p>
           </div>
         </div>
       )}

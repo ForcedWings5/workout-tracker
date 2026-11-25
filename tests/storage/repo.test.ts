@@ -4,6 +4,7 @@ import {
   addSet,
   discardWorkout,
   finishWorkout,
+  findInProgressId,
   loadLogState,
   loadTodayState,
   setNote,
@@ -217,4 +218,16 @@ test("a finished session refuses set and note edits, so history isn't rewritten"
   await expect(setNote(db, id, 0, "late")).rejects.toThrow("This workout is already finished");
   await expect(skipOrRemoveSet(db, id, 0, 0)).rejects.toThrow("This workout is already finished");
   expect(await sessionRow(id)).toEqual(before);
+});
+
+test("findInProgressId finds the workout in progress, and nothing once it's finished or discarded", async () => {
+  expect(await findInProgressId(db)).toBeUndefined();
+  const id = await startWorkout(db, UPPER_A);
+  expect(await findInProgressId(db)).toBe(id);
+  await discardWorkout(db, id);
+  expect(await findInProgressId(db)).toBeUndefined();
+  const again = await startWorkout(db, UPPER_A);
+  await updateSet(db, again, 0, 0, { weight: 65, amount: 10, done: true });
+  await finishWorkout(db, again);
+  expect(await findInProgressId(db)).toBeUndefined();
 });

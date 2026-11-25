@@ -9,6 +9,7 @@ beforeEach(async () => {
   db = await seededDb();
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   // jsdom has no share API; remove anything a test put on navigator.
@@ -83,8 +84,8 @@ test("a valid file asks first, then replaces everything", async () => {
 
 test("Keep what's here leaves the phone as it was", async () => {
   const backup = await exportBackup(db);
-  const id = await startWorkout(db, "seed-workout-upper-a");
   const user = await openSettings();
+  const id = await startWorkout(db, "seed-workout-upper-a");
   await user.upload(screen.getByLabelText("Choose a backup file"), new File([JSON.stringify(backup)], "b.json", { type: "application/json" }));
   await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Keep what's here" }));
   expect(await db.sessions.get(id)).toBeDefined();
@@ -95,14 +96,61 @@ test("the home-screen note is there", async () => {
   expect(screen.getByText("Always open Workouts from the home-screen icon.")).toBeInTheDocument();
 });
 
-test("Final: if iOS refuses to share (too long after the tap), the file downloads instead", async () => {
-  const share = vi.fn().mockRejectedValue(new DOMException("needs a fresh tap", "NotAllowedError"));
+test("if iOS refuses to share (too long after the tap), the backup waits for one more tap", async () => {
+  const share = vi.fn().mockRejectedValueOnce(new DOMException("needs a fresh tap", "NotAllowedError")).mockResolvedValueOnce(undefined);
   Object.assign(navigator, { canShare: () => true, share });
-  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:backup"), revokeObjectURL: vi.fn() }));
   const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   const user = await openSettings();
   await user.click(screen.getByRole("button", { name: "Export backup" }));
-  await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
-  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(await screen.findByText("Your backup is ready. Tap Export backup again to save it.")).toBeInTheDocument();
+  expect(screen.getByText("No backup exported yet.")).toBeInTheDocument();
+  expect(click).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
   expect(await screen.findByText(/^Last export: /)).toBeInTheDocument();
+  expect(share).toHaveBeenCalledTimes(2);
+  expect(share.mock.calls[1][0].files[0]).toBe(share.mock.calls[0][0].files[0]); // the same file, not built again
+  expect(screen.queryByText(/Tap Export backup again/)).not.toBeInTheDocument();
+});
+
+test("a downloaded backup's file stays readable long enough for a slow save", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["setTimeout", "clearTimeout"] });
+  const revoke = vi.fn();
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:backup"), revokeObjectURL: revoke }));
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  renderApp(db);
+  await user.click(await screen.findByRole("button", { name: "Settings" }));
+  await user.click(await screen.findByRole("button", { name: "Export backup" }));
+  await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(revoke).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(revoke).toHaveBeenCalledWith("blob:backup");
+});
+
+test("if sharing is refused even right after the tap, it says so instead of asking again forever", async () => {
+  const share = vi.fn().mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
+  Object.assign(navigator, { canShare: () => true, share });
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await screen.findByText(/Tap Export backup again/);
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't export the backup. Try again.");
+  expect(screen.queryByText(/Tap Export backup again/)).not.toBeInTheDocument();
+});
+
+test("a backup waiting for a tap is built again after an import", async () => {
+  const share = vi.fn().mockRejectedValueOnce(new DOMException("needs a fresh tap", "NotAllowedError")).mockResolvedValue(undefined);
+  Object.assign(navigator, { canShare: () => true, share });
+  const backup = await exportBackup(db);
+  const user = await openSettings();
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await screen.findByText(/Tap Export backup again/);
+  await user.upload(screen.getByLabelText("Choose a backup file"), new File([JSON.stringify(backup)], "b.json", { type: "application/json" }));
+  await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Replace everything" }));
+  await screen.findByText("Backup imported.");
+  await user.click(screen.getByRole("button", { name: "Export backup" }));
+  await waitFor(() => expect(share).toHaveBeenCalledTimes(2));
+  expect(share.mock.calls[1][0].files[0]).not.toBe(share.mock.calls[0][0].files[0]);
 });

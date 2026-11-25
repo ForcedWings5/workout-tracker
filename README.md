@@ -82,7 +82,7 @@ docs/
 ## Supabase setup (one time)
 
 1. Create a free account at supabase.com and a new project.
-2. In the SQL editor, run the files in `supabase/migrations/`.
+2. In the SQL editor, run the files in `supabase/migrations/`, in order. When a new file is added later, run just that one.
 3. Under **Authentication → Email Templates → Magic Link**, change the email to show the code (`{{ .Token }}`) instead of a link.
 4. Copy the project URL and anon key from **Project Settings → API** into `.env.local` and into the GitHub repo's **Settings → Secrets and variables → Actions → Variables** as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 

@@ -8,9 +8,12 @@ import { createSupabaseRemote, getSupabase, onAuthChange } from "./supabase";
 
 let scheduler: SyncScheduler | undefined;
 
-/** Syncs now if signed in (for example right after finishing a workout). Never throws, never waits on the screen. */
-export function requestSync(): Promise<void> {
-  return scheduler?.runNow() ?? Promise.resolve();
+/**
+ * Syncs now if signed in (for example right after finishing a workout). Never throws, never waits
+ * on the screen. Resolves to false if the sync failed (offline, say), so Sync now can say so.
+ */
+export function requestSync(): Promise<boolean> {
+  return scheduler?.runNow() ?? Promise.resolve(true);
 }
 
 export function startSync(db: WorkoutDB): void {

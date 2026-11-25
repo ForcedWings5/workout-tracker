@@ -71,6 +71,11 @@ export async function loadTodayState(db: WorkoutDB, today: string = todayLocal()
   };
 }
 
+/** The id of the workout in progress, if there is one: the app reopens straight into it. */
+export async function findInProgressId(db: WorkoutDB): Promise<string | undefined> {
+  return live(await db.sessions.toArray()).find((s) => s.status === "in_progress")?.id;
+}
+
 export async function startWorkout(db: WorkoutDB, workoutId: string): Promise<string> {
   return db.transaction("rw", db.sessions, db.workouts, async () => {
     const sessions = live(await db.sessions.toArray());

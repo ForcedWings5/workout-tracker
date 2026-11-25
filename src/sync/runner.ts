@@ -69,8 +69,8 @@ export async function syncOnce(db: WorkoutDB, remote: RemoteStore): Promise<{ pu
 export type SyncScheduler = {
   /** Runs after `debounceMs` of quiet. */
   trigger(): void;
-  /** Runs now (or right after the current run). Never rejects. */
-  runNow(): Promise<void>;
+  /** Runs now (or right after the current run). Never rejects: resolves to whether the last run worked. */
+  runNow(): Promise<boolean>;
   dispose(): void;
 };
 
@@ -78,26 +78,30 @@ export type SyncScheduler = {
 export function createSyncScheduler(run: () => Promise<unknown>, opts: { debounceMs?: number } = {}): SyncScheduler {
   const debounceMs = opts.debounceMs ?? 5000;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let running: Promise<void> | undefined;
+  let running: Promise<boolean> | undefined;
   let queued = false;
   let disposed = false;
 
-  const start = (): Promise<void> => {
-    if (disposed) return Promise.resolve();
+  const start = (): Promise<boolean> => {
+    if (disposed) return Promise.resolve(false);
     if (running) {
       queued = true;
       return running;
     }
     running = (async () => {
+      let ok = false;
       do {
         queued = false;
         try {
           await run();
+          ok = true;
         } catch {
           // Offline, signed out, server down: try again on the next trigger.
+          ok = false;
         }
       } while (queued && !disposed);
       running = undefined;
+      return ok;
     })();
     return running;
   };
